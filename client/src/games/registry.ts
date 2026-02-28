@@ -1,5 +1,6 @@
 import type { GameConfig } from './types';
 import { MemoryGame } from './memory/MemoryGame';
+import { OddOneOut } from './odd-one-out/OddOneOut';
 
 export const games: GameConfig[] = [
   {
@@ -11,7 +12,13 @@ export const games: GameConfig[] = [
     maxPlayers: 4,
     component: MemoryGame,
   },
-  // To add a new game:
-  // 1. Create a folder: games/your-game/YourGame.tsx (copy _template.tsx)
-  // 2. Import it here and add an entry to this array
+  {
+    id: 'odd-one-out',
+    name: 'Odd One Out',
+    description:
+      'Answer questions, pick your option. The minority drinks! Up to 8 players.',
+    minPlayers: 3,
+    maxPlayers: 8,
+    component: OddOneOut,
+  },
 ];

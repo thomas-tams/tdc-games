@@ -1,0 +1,420 @@
+.odd-game {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Round indicator dots */
+.odd-rounds {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.odd-round-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.3s;
+}
+
+.odd-round-dot.completed {
+  background: var(--primary);
+}
+
+.odd-round-dot.current {
+  background: var(--primary);
+  box-shadow: 0 0 8px var(--primary);
+  animation: odd-pulse 1.5s infinite;
+}
+
+.odd-round-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+
+/* Question card */
+.odd-question {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.odd-prompt {
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+  color: var(--text);
+}
+
+/* Options grid */
+.odd-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.odd-option {
+  padding: 1.2rem 1rem;
+  background: var(--bg-surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-family: var(--font);
+}
+
+.odd-option:not(:disabled):hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.odd-option:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.odd-option.selected {
+  border-color: var(--primary);
+  background: rgba(0, 210, 255, 0.1);
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.2);
+  opacity: 1;
+}
+
+.odd-option.minority {
+  border-color: var(--accent);
+  background: rgba(255, 107, 107, 0.15);
+  opacity: 1;
+}
+
+.odd-option.majority {
+  border-color: var(--success);
+  background: rgba(81, 207, 102, 0.1);
+  opacity: 1;
+}
+
+/* Progress */
+.odd-progress {
+  text-align: center;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.odd-progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.odd-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+/* Waiting message */
+.odd-waiting {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 1rem;
+}
+
+/* Vote bars (reveal & results) */
+.odd-vote-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.odd-vote-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.odd-vote-label {
+  min-width: 120px;
+  font-size: 0.9rem;
+  color: var(--text);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.odd-vote-bar-track {
+  flex: 1;
+  height: 28px;
+  background: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+}
+
+.odd-vote-bar-fill {
+  height: 100%;
+  border-radius: var(--radius);
+  transition: width 0.8s ease-out;
+  min-width: 0;
+}
+
+.odd-vote-bar-fill.majority {
+  background: var(--success);
+}
+
+.odd-vote-bar-fill.minority {
+  background: var(--accent);
+}
+
+.odd-vote-bar-fill.neutral {
+  background: var(--primary);
+}
+
+.odd-vote-count {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  min-width: 2.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* Drink callout */
+.odd-drink-callout {
+  background: rgba(255, 107, 107, 0.12);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  text-align: center;
+  margin: 1.5rem 0;
+  animation: odd-shake 0.5s ease-in-out;
+}
+
+.odd-drink-callout h3 {
+  color: var(--accent);
+  font-size: 1.5rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.odd-drink-callout p {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.odd-nobody-drinks {
+  background: rgba(81, 207, 102, 0.1);
+  border-color: var(--success);
+}
+
+.odd-nobody-drinks h3 {
+  color: var(--success);
+}
+
+/* Player choices breakdown */
+.odd-choices-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.odd-choice-tag {
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.odd-choice-tag.drinker {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Scoreboard */
+.odd-scoreboard {
+  margin: 1.5rem 0;
+}
+
+.odd-scoreboard h4 {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.75rem 0;
+}
+
+.odd-scores {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.odd-player-score {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.odd-player-name {
+  color: var(--text);
+}
+
+.odd-drink-count {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* Controls */
+.odd-controls {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+/* Game over */
+.odd-game-over {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.odd-game-over h2 {
+  font-size: 2rem;
+  margin: 0 0 0.5rem 0;
+  color: var(--primary);
+}
+
+.odd-game-over-subtitle {
+  color: var(--text-muted);
+  margin: 0 0 2rem 0;
+}
+
+.odd-final-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 400px;
+  margin: 0 auto 2rem;
+}
+
+.odd-final-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.odd-final-row.top-drinker {
+  border-color: var(--accent);
+}
+
+.odd-final-row.most-sober {
+  border-color: var(--success);
+}
+
+.odd-final-rank {
+  font-weight: 700;
+  min-width: 1.5rem;
+  color: var(--text-muted);
+}
+
+.odd-final-name {
+  flex: 1;
+  text-align: left;
+  margin-left: 0.5rem;
+}
+
+.odd-final-drinks {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.odd-final-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius);
+  margin-left: 0.5rem;
+}
+
+.odd-final-row.top-drinker .odd-final-badge {
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--accent);
+}
+
+.odd-final-row.most-sober .odd-final-badge {
+  background: rgba(81, 207, 102, 0.1);
+  color: var(--success);
+}
+
+/* Animations */
+@keyframes odd-pulse {
+  0%, 100% { box-shadow: 0 0 4px var(--primary); }
+  50% { box-shadow: 0 0 14px var(--primary); }
+}
+
+@keyframes odd-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+  .odd-options {
+    grid-template-columns: 1fr;
+  }
+
+  .odd-prompt {
+    font-size: 1.2rem;
+  }
+
+  .odd-option {
+    min-height: 56px;
+    padding: 1rem;
+  }
+
+  .odd-vote-label {
+    min-width: 80px;
+    font-size: 0.8rem;
+  }
+
+  .odd-game-over h2 {
+    font-size: 1.5rem;
+  }
+}
