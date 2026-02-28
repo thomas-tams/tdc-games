@@ -1,0 +1,15 @@
+{
+  "name": "tdc-games-server",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "publish": "spacetime publish tdc-games"
+  },
+  "dependencies": {
+    "spacetimedb": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

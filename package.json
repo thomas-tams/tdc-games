@@ -1,0 +1,15 @@
+{
+  "name": "tdc-games",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Multiplayer browser game maker powered by SpacetimeDB",
+  "scripts": {
+    "dev": "pnpm --filter tdc-games-client dev",
+    "build": "pnpm --filter tdc-games-client build",
+    "generate": "spacetime generate --lang typescript --out-dir client/src/module_bindings --module-path server"
+  },
+  "packageManager": "pnpm@10.26.1",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

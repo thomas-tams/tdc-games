@@ -1,0 +1,136 @@
+.memory-game {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.memory-status {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.memory-your-turn {
+  color: var(--primary);
+}
+
+.memory-waiting {
+  color: var(--text-muted);
+}
+
+.memory-winner {
+  color: var(--success);
+  font-size: 1.5rem;
+}
+
+.memory-scores {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.memory-score {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.memory-score.active {
+  border-color: var(--primary);
+}
+
+.memory-score-name {
+  font-weight: 600;
+}
+
+.memory-score-value {
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.memory-card {
+  aspect-ratio: 1;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  perspective: 600px;
+}
+
+.memory-card:disabled {
+  cursor: default;
+}
+
+.memory-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.4s ease;
+  transform-style: preserve-3d;
+}
+
+.memory-card.flipped .memory-card-inner,
+.memory-card.matched .memory-card-inner {
+  transform: rotateY(180deg);
+}
+
+.memory-card-front,
+.memory-card-back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  backface-visibility: hidden;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.memory-card-front {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+  transition: border-color 0.2s;
+}
+
+.memory-card:not(:disabled):hover .memory-card-front {
+  border-color: var(--primary);
+}
+
+.memory-card-back {
+  background: var(--bg-surface);
+  border: 2px solid var(--primary);
+  transform: rotateY(180deg);
+}
+
+.memory-card.matched .memory-card-back {
+  border-color: var(--success);
+  opacity: 0.7;
+}
+
+@media (max-width: 480px) {
+  .memory-grid {
+    gap: 0.5rem;
+  }
+  .memory-card-front,
+  .memory-card-back {
+    font-size: 1.5rem;
+  }
+}
