@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm generate && pnpm build",
+  "buildCommand": "pnpm build",
   "outputDirectory": "client/dist",
   "installCommand": "pnpm install",
   "rewrites": [

@@ -3,5 +3,4 @@ dist/
 .env
 .env.local
 *.log
-client/src/module_bindings/
 .vercel/
