@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTable } from 'spacetimedb/react';
+import { tables } from '../module_bindings';
 import { games } from '../games/registry';
 import '../App.css';
 
@@ -10,6 +12,23 @@ export function GameSelector() {
   );
   const [joinRoomId, setJoinRoomId] = useState('');
   const [showJoinForm, setShowJoinForm] = useState(false);
+
+  // Subscribe to rooms and players for open lobby listing
+  const [allRooms] = useTable(tables.rooms);
+  const [allPlayers] = useTable(tables.players);
+
+  const openLobbies = useMemo(() => {
+    const lobbies = allRooms
+      .filter((r) => r.status === 'waiting')
+      .map((r) => {
+        const playerCount = allPlayers.filter((p) => p.roomId === r.id).length;
+        const game = games.find((g) => g.id === r.gameType);
+        return { room: r, playerCount, game };
+      });
+    // Sort by most players first (most likely to start soon)
+    lobbies.sort((a, b) => b.playerCount - a.playerCount);
+    return lobbies;
+  }, [allRooms, allPlayers]);
 
   const saveName = (name: string) => {
     setPlayerName(name);
@@ -87,14 +106,90 @@ export function GameSelector() {
         ))}
       </div>
 
-      {/* Join Room */}
+      {/* Open Lobbies */}
+      {openLobbies.length > 0 && (
+        <div style={{ marginBottom: '2rem' }}>
+          <h2
+            style={{
+              fontSize: '1.3rem',
+              marginBottom: '1rem',
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+            }}
+          >
+            Open Lobbies
+          </h2>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              maxWidth: '500px',
+              margin: '0 auto',
+            }}
+          >
+            {openLobbies.map(({ room, playerCount, game }) => (
+              <div
+                key={room.id}
+                style={{
+                  background: 'var(--bg-card)',
+                  borderRadius: 'var(--radius)',
+                  padding: '0.75rem 1rem',
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                }}
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: 'var(--success)',
+                    flexShrink: 0,
+                  }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600 }}>
+                    {game?.name || room.gameType}
+                  </span>
+                  <span
+                    style={{
+                      color: 'var(--text-muted)',
+                      fontSize: '0.85rem',
+                      marginLeft: '0.75rem',
+                    }}
+                  >
+                    {playerCount}/{room.maxPlayers} players
+                  </span>
+                </div>
+                <button
+                  className="btn-primary"
+                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+                  disabled={!playerName.trim() || playerCount >= room.maxPlayers}
+                  onClick={() =>
+                    navigate(
+                      `/lobby/${room.id}?name=${encodeURIComponent(playerName)}`
+                    )
+                  }
+                >
+                  {playerCount >= room.maxPlayers ? 'Full' : 'Join'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Join Room by ID */}
       <div style={{ textAlign: 'center' }}>
         {!showJoinForm ? (
           <button
             className="btn-secondary"
             onClick={() => setShowJoinForm(true)}
           >
-            Join a Room
+            Join by Room ID
           </button>
         ) : (
           <div
