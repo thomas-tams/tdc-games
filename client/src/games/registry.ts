@@ -1,6 +1,9 @@
 import type { GameConfig } from './types';
 import { MemoryGame } from './memory/MemoryGame';
 import { OddOneOut } from './odd-one-out/OddOneOut';
+import { TheChance } from './the-chance/TheChance';
+import { HotPotato } from './hot-potato/HotPotato';
+import { SoundLimbo } from './sound-limbo/SoundLimbo';
 
 export const games: GameConfig[] = [
   {
@@ -20,5 +23,32 @@ export const games: GameConfig[] = [
     minPlayers: 3,
     maxPlayers: 8,
     component: OddOneOut,
+  },
+  {
+    id: 'the-chance',
+    name: 'The Chance',
+    description:
+      'Guess a number. If you match the game, you drink! Odds shrink each turn.',
+    minPlayers: 2,
+    maxPlayers: 8,
+    component: TheChance,
+  },
+  {
+    id: 'hot-potato',
+    name: 'Hot Potato',
+    description:
+      'Pass the potato before it explodes! The holder drinks. Played on your phone.',
+    minPlayers: 2,
+    maxPlayers: 8,
+    component: HotPotato,
+  },
+  {
+    id: 'sound-limbo',
+    name: 'Sound Limbo',
+    description:
+      'Control your voice to hit the target zone. Zone shrinks each round — last one standing wins!',
+    minPlayers: 2,
+    maxPlayers: 8,
+    component: SoundLimbo,
   },
 ];

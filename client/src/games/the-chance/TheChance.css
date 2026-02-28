@@ -1,0 +1,525 @@
+.chance-game {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Header: round + odds */
+.chance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.chance-round {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chance-odds {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 1.2rem;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  transition: all 0.4s;
+}
+
+.chance-odds.warning {
+  border-color: var(--warning);
+  animation: chance-pulse 2s infinite;
+}
+
+.chance-odds.danger {
+  border-color: var(--accent);
+  animation: chance-pulse 1s infinite;
+}
+
+.chance-odds-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.chance-odds-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.chance-odds.warning .chance-odds-value {
+  color: var(--warning);
+}
+
+.chance-odds.danger .chance-odds-value {
+  color: var(--accent);
+}
+
+/* Twist card */
+.chance-twist {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  margin-bottom: 1.25rem;
+  animation: chance-twist-in 0.4s ease-out;
+}
+
+.chance-twist-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.chance-twist-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.chance-twist-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--primary);
+}
+
+.chance-twist-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Turn indicator */
+.chance-turn {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.chance-your-turn {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+}
+
+.chance-pick-hint,
+.chance-pick-two-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.chance-waiting-turn {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+/* Number grid */
+.chance-grid {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  max-width: 350px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.chance-number {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text);
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chance-number:not(:disabled):hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 210, 255, 0.2);
+}
+
+.chance-number:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.chance-number:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.chance-number.selected {
+  border-color: var(--primary);
+  background: rgba(0, 210, 255, 0.15);
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.3);
+}
+
+/* Reveal phase */
+.chance-reveal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.chance-reveal-guesses,
+.chance-reveal-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chance-reveal-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chance-reveal-guess {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--primary);
+}
+
+.chance-reveal-vs {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.chance-reveal-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text);
+  min-width: 3rem;
+  text-align: center;
+}
+
+.chance-reveal-number.spinning {
+  animation: chance-spin-glow 0.15s infinite alternate;
+}
+
+.chance-reveal-number.landed {
+  animation: chance-land 0.3s ease-out;
+}
+
+.chance-reroll-label {
+  font-size: 0.85rem;
+  color: var(--warning);
+  font-weight: 600;
+  animation: chance-pulse 1s infinite;
+}
+
+/* Result phase */
+.chance-result {
+  text-align: center;
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  border: 2px solid;
+}
+
+.chance-result h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+}
+
+.chance-result-detail {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.chance-result-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.chance-drink {
+  background: rgba(255, 107, 107, 0.12);
+  border-color: var(--accent);
+  animation: chance-shake 0.5s ease-in-out;
+}
+
+.chance-drink h2 {
+  color: var(--accent);
+}
+
+.chance-safe {
+  background: rgba(81, 207, 102, 0.1);
+  border-color: var(--success);
+}
+
+.chance-safe h2 {
+  color: var(--success);
+}
+
+/* Turn history */
+.chance-history {
+  margin: 1.5rem 0;
+}
+
+.chance-history h4 {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.5rem 0;
+}
+
+.chance-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.chance-history-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+}
+
+.chance-history-name {
+  font-weight: 600;
+  color: var(--text);
+  min-width: 60px;
+}
+
+.chance-history-nums {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  flex: 1;
+}
+
+.chance-history-twist {
+  font-size: 0.9rem;
+}
+
+.chance-history-result {
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius);
+}
+
+.chance-history-result.drink {
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--accent);
+}
+
+.chance-history-result.safe {
+  background: rgba(81, 207, 102, 0.1);
+  color: var(--success);
+}
+
+/* Scoreboard */
+.chance-scoreboard {
+  margin: 1.5rem 0;
+}
+
+.chance-scoreboard h4 {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.75rem 0;
+}
+
+.chance-scores {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.chance-player-score {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  transition: border-color 0.3s;
+}
+
+.chance-player-score.active {
+  border-color: var(--primary);
+}
+
+.chance-player-name {
+  color: var(--text);
+}
+
+.chance-drink-count {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* Controls */
+.chance-controls {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+/* Waiting */
+.chance-waiting {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 2rem 1rem;
+}
+
+/* Game Over */
+.chance-game-over {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.chance-game-over h2 {
+  font-size: 2rem;
+  margin: 0 0 0.5rem 0;
+  color: var(--primary);
+}
+
+.chance-game-over-sub {
+  color: var(--text-muted);
+  margin: 0 0 2rem 0;
+}
+
+.chance-final-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.chance-final-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.chance-final-row.top-drinker {
+  border-color: var(--accent);
+}
+
+.chance-final-rank {
+  font-weight: 700;
+  min-width: 1.5rem;
+  color: var(--text-muted);
+}
+
+.chance-final-name {
+  flex: 1;
+  text-align: left;
+  margin-left: 0.5rem;
+}
+
+.chance-final-drinks {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.chance-final-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius);
+  margin-left: 0.5rem;
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--accent);
+}
+
+/* Animations */
+@keyframes chance-pulse {
+  0%, 100% { box-shadow: 0 0 4px currentColor; }
+  50% { box-shadow: 0 0 16px currentColor; }
+}
+
+@keyframes chance-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes chance-twist-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes chance-spin-glow {
+  from { opacity: 0.5; text-shadow: 0 0 8px var(--primary); }
+  to { opacity: 1; text-shadow: 0 0 2px var(--primary); }
+}
+
+@keyframes chance-land {
+  0% { transform: scale(1.3); }
+  60% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .chance-reveal {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .chance-reveal-guess,
+  .chance-reveal-number {
+    font-size: 2rem;
+  }
+
+  .chance-number {
+    font-size: 1.1rem;
+  }
+
+  .chance-odds-value {
+    font-size: 1.2rem;
+  }
+
+  .chance-result h2 {
+    font-size: 1.5rem;
+  }
+}
