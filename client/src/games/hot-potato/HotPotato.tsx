@@ -19,6 +19,7 @@ interface HotPotatoState {
   config: HotPotatoConfig;
   currentRound: number;
   startedAt: number | null;
+  roundDuration: number | null; // actual seconds for this round (randomized around config.timerDuration)
   countdownValue: number | null; // 3, 2, 1, null
   potatoHolders: number[]; // only host mutates this
   hasSipped: Record<number, boolean>; // each player writes own key
@@ -43,6 +44,7 @@ function createInitialState(): HotPotatoState {
     config: { ...DEFAULT_CONFIG },
     currentRound: 1,
     startedAt: null,
+    roundDuration: null,
     countdownValue: null,
     potatoHolders: [],
     hasSipped: {},
@@ -179,11 +181,16 @@ export function HotPotato({
       } else {
         const allPlayerNums = players.map((p) => p.playerNumber);
         const holders = selectRandomHolders(allPlayerNums, current.config.numPotatoes);
+        // Randomize duration ±33% around configured timer
+        const base = current.config.timerDuration;
+        const variance = base * 0.33;
+        const duration = Math.round(base - variance + Math.random() * variance * 2);
         onUpdateState(
           JSON.stringify({
             ...current,
             phase: 'playing',
             startedAt: Date.now(),
+            roundDuration: duration,
             potatoHolders: holders,
             hasSipped: {},
             passRequests: {},
@@ -204,7 +211,7 @@ export function HotPotato({
       if (current.phase !== 'playing' || !current.startedAt) return;
 
       const elapsed = Date.now() - current.startedAt;
-      if (elapsed >= current.config.timerDuration * 1000) {
+      if (elapsed >= (current.roundDuration ?? current.config.timerDuration) * 1000) {
         // Transition to exploded — potatoHolders is already authoritative from host
         onUpdateState(JSON.stringify({ ...current, phase: 'exploded' }));
       }
@@ -248,7 +255,7 @@ export function HotPotato({
     }
 
     const startedAt = state.startedAt;
-    const duration = state.config.timerDuration * 1000;
+    const duration = (state.roundDuration ?? state.config.timerDuration) * 1000;
 
     const update = () => {
       const elapsed = Date.now() - startedAt;
@@ -343,6 +350,7 @@ export function HotPotato({
         hasSipped: {},
         passRequests: {},
         startedAt: null,
+        roundDuration: null,
       })
     );
   }, [onUpdateState, onEndGame]);
@@ -363,7 +371,7 @@ export function HotPotato({
 
   // Timer progress (1 = full, 0 = expired)
   const progress =
-    remainingMs !== null ? remainingMs / (state.config.timerDuration * 1000) : 1;
+    remainingMs !== null ? remainingMs / ((state.roundDuration ?? state.config.timerDuration) * 1000) : 1;
   const remainingSec = remainingMs !== null ? Math.ceil(remainingMs / 1000) : null;
 
   // Potato intensity: calm > 60%, hot 25-60%, very-hot < 25%
@@ -484,19 +492,6 @@ export function HotPotato({
         <div className="hp-round-info">
           <span>
             Round {state.currentRound} of {state.config.numRounds}
-          </span>
-        </div>
-
-        {/* Timer bar */}
-        <div className="hp-timer">
-          <div className="hp-timer-bar">
-            <div
-              className={`hp-timer-fill ${intensity}`}
-              style={{ width: `${progress * 100}%` }}
-            />
-          </div>
-          <span className={`hp-timer-text ${intensity}`}>
-            {remainingSec !== null ? `${remainingSec}s` : ''}
           </span>
         </div>
 
