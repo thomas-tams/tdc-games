@@ -6,6 +6,8 @@ import { HotPotato } from './hot-potato/HotPotato';
 import { SoundLimbo } from './sound-limbo/SoundLimbo';
 import { LoopingLouie } from './looping-louie/LoopingLouie';
 import { LoopingLouieSpectator } from './looping-louie/LoopingLouieSpectator';
+import { BeerRun } from './beer-run/BeerRun';
+import { BeerRunSpectator } from './beer-run/BeerRunSpectator';
 
 export const games: GameConfig[] = [
   {
@@ -62,5 +64,15 @@ export const games: GameConfig[] = [
     maxPlayers: 4,
     component: LoopingLouie,
     spectatorComponent: LoopingLouieSpectator,
+  },
+  {
+    id: 'beer-run',
+    name: 'Beer Run',
+    description:
+      'Side-scrolling obstacle runner. Jump or drink! Last beer standing wins. (Emil would not survive.)',
+    minPlayers: 2,
+    maxPlayers: 8,
+    component: BeerRun,
+    spectatorComponent: BeerRunSpectator,
   },
 ];

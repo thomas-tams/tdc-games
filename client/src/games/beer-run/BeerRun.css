@@ -1,0 +1,614 @@
+/* ============================================================================
+   Beer Run — Game Styles
+   ============================================================================ */
+
+.br-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 0.5rem;
+  min-height: 70vh;
+  position: relative;
+}
+
+.br-waiting {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.1rem;
+}
+
+/* === SETUP PHASE === */
+
+.br-setup-title {
+  font-size: 1.8rem;
+  text-align: center;
+}
+
+.br-setup-subtitle {
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.br-setup {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+.br-setup-waiting {
+  text-align: center;
+}
+
+.br-setup-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.br-setup-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.br-setup-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.br-setup-btn {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.br-setup-btn.selected {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--bg);
+}
+
+.br-setup-btn:not(.selected):hover {
+  border-color: var(--text-muted);
+}
+
+.br-start-btn {
+  margin-top: 0.5rem;
+  padding: 0.8rem;
+  font-size: 1.1rem;
+}
+
+.br-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.br-config-preview {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* === COUNTDOWN === */
+
+.br-countdown-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  min-height: 60vh;
+  text-align: center;
+}
+
+.br-countdown-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.br-countdown-number {
+  font-size: 6rem;
+  font-weight: 900;
+  color: var(--primary);
+  animation: br-count-pop 0.5s ease;
+}
+
+@keyframes br-count-pop {
+  0% { transform: scale(1.5); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.br-countdown-hint {
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+/* === EVENT TOAST === */
+
+.br-toast {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 0.95rem;
+  z-index: 10;
+  animation: br-toast-in 0.3s ease;
+  white-space: nowrap;
+}
+
+.br-toast-eliminate {
+  background: #000;
+  color: #fff;
+}
+
+@keyframes br-toast-in {
+  from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* === PLAYING PHASE — PLAYER VIEW === */
+
+.br-playing {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1;
+  gap: 0.5rem;
+}
+
+/* Mini preview strip */
+.br-preview {
+  position: relative;
+  width: 100%;
+  height: 22vh;
+  overflow: hidden;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.br-preview-ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--border);
+}
+
+.br-preview-avatar {
+  position: absolute;
+  bottom: 3px;
+  font-size: 2rem;
+  transition: transform 0.05s linear;
+  z-index: 2;
+}
+
+.br-preview-avatar.dead {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+.br-preview-obstacle {
+  position: absolute;
+  bottom: 3px;
+  font-size: 1.5rem;
+  transition: left 0.05s linear;
+  z-index: 1;
+}
+
+/* Status bar */
+.br-status-bar {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 0.25rem 0;
+}
+
+.br-status-player {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+}
+
+.br-status-player.dead {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.br-status-player.me {
+  border-color: var(--primary);
+}
+
+.br-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Jump button */
+.br-jump-btn {
+  flex: 1;
+  min-height: 45vh;
+  width: 100%;
+  font-size: 2rem;
+  font-weight: 800;
+  background: var(--primary);
+  color: var(--bg);
+  border: 3px solid var(--primary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.1s, transform 0.1s, border-color 0.1s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.br-jump-btn:active {
+  transform: scale(0.97);
+  background: var(--primary-hover);
+}
+
+.br-jump-btn.flash {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.br-jump-btn.dead {
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: default;
+}
+
+.br-jump-label {
+  font-size: 1rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* Death message */
+.br-death-msg {
+  text-align: center;
+  padding: 1rem;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+/* === RESULT OVERLAY === */
+
+.br-result-overlay {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  text-align: center;
+  width: 100%;
+}
+
+.br-result-title {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.br-result-winner {
+  font-size: 1.3rem;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+}
+
+.br-result-drinks h3 {
+  margin-bottom: 0.75rem;
+  color: var(--text-muted);
+}
+
+.br-result-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.br-result-row:last-child {
+  border-bottom: none;
+}
+
+.br-result-row.winner {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.br-result-row.last-place {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ============================================================================
+   SPECTATOR / TV VIEW
+   ============================================================================ */
+
+.br-spectator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  min-height: 80vh;
+  position: relative;
+  width: 100%;
+}
+
+.br-spectator-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* Side-scrolling world */
+.br-world {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  aspect-ratio: 16 / 7;
+  max-height: 70vh;
+  overflow: hidden;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.br-lane {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.br-lane:last-child {
+  border-bottom: none;
+}
+
+.br-lane-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+}
+
+.br-lane-ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border);
+}
+
+.br-lane-name {
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.7;
+  z-index: 3;
+}
+
+.br-lane-avatar {
+  position: absolute;
+  bottom: 2px;
+  font-size: 1.6rem;
+  transition: transform 0.05s linear;
+  z-index: 2;
+}
+
+.br-lane-avatar.dead {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+
+.br-lane-obstacle {
+  position: absolute;
+  bottom: 2px;
+  transition: left 0.05s linear;
+  z-index: 1;
+}
+
+/* Speed indicator */
+.br-speed-indicator {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  z-index: 10;
+  background: var(--bg-card);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+/* Elimination splash */
+.br-splash {
+  position: absolute;
+  z-index: 5;
+  font-size: 2.5rem;
+  pointer-events: none;
+  animation: br-splash 0.6s ease forwards;
+}
+
+@keyframes br-splash {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* Spectator toasts */
+.br-spectator-toasts {
+  position: fixed;
+  top: 80px;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 100;
+}
+
+.br-spectator-toast {
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 1.1rem;
+  animation: br-toast-in 0.3s ease;
+  white-space: nowrap;
+  background: #000;
+  color: #fff;
+}
+
+/* Spectator countdown */
+.br-spectator-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  gap: 1.5rem;
+}
+
+/* Spectator result */
+.br-spectator-result {
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 3rem;
+  max-width: 600px;
+  width: 100%;
+}
+
+.br-spectator-result h2 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.br-spectator-winner {
+  font-size: 1.8rem;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+}
+
+.br-spectator-drink-tally {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.br-spectator-tally-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  font-size: 1.2rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.br-spectator-tally-row:last-child {
+  border-bottom: none;
+}
+
+.br-spectator-tally-row.winner {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.br-spectator-tally-row.last-place {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Scoreboard sidebar */
+.br-scoreboard {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0.25rem 0;
+}
+
+.br-scoreboard-player {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+}
+
+.br-scoreboard-player.dead {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 400px) {
+  .br-jump-btn {
+    font-size: 1.6rem;
+    min-height: 40vh;
+  }
+
+  .br-preview {
+    height: 18vh;
+  }
+
+  .br-setup-title {
+    font-size: 1.4rem;
+  }
+}
