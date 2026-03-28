@@ -189,6 +189,18 @@ export function GameSelector() {
                 >
                   {playerCount >= room.maxPlayers ? 'Full' : 'Join'}
                 </button>
+                <button
+                  className="btn-secondary"
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                  disabled={!playerName.trim()}
+                  onClick={() =>
+                    navigate(
+                      `/lobby/${room.id}?name=${encodeURIComponent(playerName)}&spectate=true`
+                    )
+                  }
+                >
+                  Watch
+                </button>
               </div>
             ))}
           </div>
@@ -297,6 +309,18 @@ export function GameSelector() {
               onClick={handleJoinRoom}
             >
               Join
+            </button>
+            <button
+              className="btn-secondary"
+              disabled={!playerName.trim() || !joinRoomId.trim()}
+              onClick={() => {
+                if (!playerName.trim() || !joinRoomId.trim()) return;
+                navigate(
+                  `/lobby/${joinRoomId}?name=${encodeURIComponent(playerName)}&spectate=true`
+                );
+              }}
+            >
+              Watch
             </button>
             <button
               className="btn-secondary"

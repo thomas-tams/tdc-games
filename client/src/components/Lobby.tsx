@@ -94,6 +94,18 @@ export function Lobby() {
     navigate('/');
   };
 
+  const handleSwitchToSpectator = () => {
+    if (!conn || !currentRoomId) return;
+    conn.reducers.leaveRoom({});
+    // Small delay to let the leave process, then rejoin as spectator
+    setTimeout(() => {
+      conn.reducers.joinAsSpectator({
+        roomId: currentRoomId,
+        displayName: playerName,
+      });
+    }, 200);
+  };
+
   const gameConfig = games.find((g) => g.id === (room?.gameType || gameType));
 
   return (
@@ -222,7 +234,7 @@ export function Lobby() {
           </>
         )}
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           {myPlayer?.isHost && (
             <button
               className="btn-primary"
@@ -233,6 +245,14 @@ export function Lobby() {
               Start Game
               {activePlayers.length < (gameConfig?.minPlayers || 1) &&
                 ` (need ${gameConfig?.minPlayers || 1})`}
+            </button>
+          )}
+          {myPlayer && !myPlayer.isHost && !myPlayer.isSpectator && (
+            <button
+              className="btn-secondary"
+              onClick={handleSwitchToSpectator}
+            >
+              Switch to Spectator
             </button>
           )}
           <button className="btn-danger" onClick={handleLeave}>

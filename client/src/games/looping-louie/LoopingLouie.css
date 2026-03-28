@@ -21,6 +21,94 @@
   font-size: 1.1rem;
 }
 
+/* === SETUP PHASE === */
+
+.ll-setup-title {
+  font-size: 1.8rem;
+  text-align: center;
+}
+
+.ll-setup-subtitle {
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.ll-setup {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+.ll-setup-waiting {
+  text-align: center;
+}
+
+.ll-setup-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ll-setup-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.ll-setup-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ll-setup-btn {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ll-setup-btn.selected {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--bg);
+}
+
+.ll-setup-btn:not(.selected):hover {
+  border-color: var(--text-muted);
+}
+
+.ll-start-btn {
+  margin-top: 0.5rem;
+  padding: 0.8rem;
+  font-size: 1.1rem;
+}
+
+.ll-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.ll-config-preview {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
 /* === COUNTDOWN === */
 
 .ll-countdown-overlay {
@@ -109,6 +197,7 @@
   border-radius: 50%;
   border: 3px solid var(--border);
   background: var(--bg-card);
+  overflow: visible;
 }
 
 .ll-center {
@@ -122,23 +211,34 @@
   transform: translate(-50%, -50%);
 }
 
-/* === ZONE INDICATORS === */
+/* === ZONE ARCS OVERLAY === */
+
+.ll-zone-arcs {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* === ZONE LABELS === */
 
 .ll-zone {
   position: absolute;
   top: 50%;
   left: 50%;
   transform-origin: 0 0;
-  transform: rotate(var(--zone-angle)) translateY(calc(-1 * min(140px, 37.5vw) - 15px));
-  margin-left: -20px;
+  transform: rotate(var(--zone-angle)) translateY(calc(-1 * min(140px, 37.5vw) - 20px));
+  margin-left: -30px;
   margin-top: -10px;
+  z-index: 3;
 }
 
 .ll-zone-label {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.1rem;
+  gap: 0;
   transform: rotate(calc(-1 * var(--zone-angle)));
   min-width: 60px;
 }
@@ -150,18 +250,34 @@
   white-space: nowrap;
 }
 
-.ll-zone-chickens {
-  font-size: 0.65rem;
+.ll-zone-barn {
+  font-size: 0.9rem;
   line-height: 1;
+}
+
+.ll-zone-chickens {
+  font-size: 0.55rem;
+  line-height: 1;
+  display: flex;
+  gap: 1px;
+}
+
+.ll-mini-chicken {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.ll-mini-chicken.lost {
+  opacity: 0.15;
+  transform: translateY(3px) scale(0.8);
 }
 
 .ll-zone.eliminated .ll-zone-label {
   opacity: 0.3;
-  text-decoration: line-through;
 }
 
 .ll-zone.mine .ll-zone-name {
   text-decoration: underline;
+  font-size: 0.8rem;
 }
 
 /* === PLANE === */
@@ -171,27 +287,21 @@
   top: 50%;
   left: 50%;
   transform-origin: 0 0;
-  transform: rotate(var(--plane-angle)) translateY(calc(-1 * min(120px, 32vw)));
-  margin-left: -10px;
-  margin-top: -10px;
-  font-size: 1.3rem;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  /* Rotate to orbit position, translate outward, then rotate emoji to face direction of travel */
+  transform: rotate(var(--plane-angle)) translateY(calc(-1 * min(120px, 32vw))) rotate(90deg);
+  margin-left: -12px;
+  margin-top: -12px;
+  font-size: 1.5rem;
   transition: none;
   z-index: 5;
-  /* Height visualization: opacity and scale */
   opacity: calc(0.4 + var(--plane-height) * 0.6);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
-.ll-plane::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(6px + var(--plane-height) * 8px);
-  height: 2px;
-  border-radius: 50%;
-  background: rgba(0,0,0, calc(0.4 - var(--plane-height) * 0.3));
+/* When plane is low — danger glow */
+.ll-plane.low {
+  filter: drop-shadow(0 0 8px rgba(231, 76, 60, 0.7)) drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  transform: rotate(var(--plane-angle)) translateY(calc(-1 * min(120px, 32vw))) rotate(90deg) scale(1.15);
 }
 
 /* === MY CHICKENS === */
@@ -202,24 +312,24 @@
 
 .ll-chicken-row {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
   justify-content: center;
 }
 
 .ll-chicken {
-  font-size: 2rem;
+  font-size: 1.8rem;
   transition: opacity 0.3s, transform 0.3s;
 }
 
 .ll-chicken.lost {
   opacity: 0.15;
-  transform: scale(0.7);
+  transform: scale(0.7) translateY(5px);
 }
 
 .ll-eliminated-text {
   color: var(--accent);
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   margin-top: 0.5rem;
 }
 
@@ -227,7 +337,7 @@
 
 .ll-drinks {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
 }
 
@@ -251,7 +361,7 @@
 }
 
 .ll-paddle-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.95);
 }
 
 .ll-paddle-btn.approaching {
@@ -342,7 +452,6 @@
   justify-content: center;
 }
 
-/* Toasts for spectator */
 .ll-spectator-toasts {
   position: fixed;
   top: 80px;
@@ -362,7 +471,6 @@
   white-space: nowrap;
 }
 
-/* Large spectator track */
 .ll-spectator-track-container {
   display: flex;
   justify-content: center;
@@ -376,12 +484,19 @@
 }
 
 .ll-spectator-track .ll-zone {
-  transform: rotate(var(--zone-angle)) translateY(calc(-1 * min(250px, 35vh, 40vw) - 30px));
+  transform: rotate(var(--zone-angle)) translateY(calc(-1 * min(250px, 35vh, 40vw) - 35px));
+  margin-left: -40px;
 }
 
 .ll-spectator-track .ll-plane {
-  transform: rotate(var(--plane-angle)) translateY(calc(-1 * min(220px, 30vh, 35vw)));
-  font-size: 2rem;
+  transform: rotate(var(--plane-angle)) translateY(calc(-1 * min(220px, 30vh, 35vw))) rotate(90deg);
+  font-size: 2.2rem;
+  margin-left: -14px;
+  margin-top: -14px;
+}
+
+.ll-spectator-track .ll-plane.low {
+  transform: rotate(var(--plane-angle)) translateY(calc(-1 * min(220px, 30vh, 35vw))) rotate(90deg) scale(1.15);
 }
 
 .ll-spectator-zone-label {
@@ -392,24 +507,20 @@
   font-size: 1rem;
 }
 
+.ll-spectator-zone-label .ll-zone-barn {
+  font-size: 1.2rem;
+}
+
 .ll-spectator-zone-label .ll-zone-chickens {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .ll-zone-drinks {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
+  margin-top: 2px;
 }
 
-.ll-mini-chicken {
-  transition: opacity 0.3s;
-}
-
-.ll-mini-chicken.lost {
-  opacity: 0.15;
-}
-
-/* Spectator result */
 .ll-spectator-result {
   text-align: center;
   background: var(--bg-card);

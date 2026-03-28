@@ -3,6 +3,7 @@ import type { GameProps } from '../types';
 import {
   type LoopingLouieState,
   getPlayerZones,
+  PADDLE_WINDOW_DEGREES,
 } from './simulation';
 import './LoopingLouie.css';
 
@@ -12,15 +13,33 @@ function getPlayerColor(index: number): string {
   return PLAYER_COLORS[index % PLAYER_COLORS.length];
 }
 
-/**
- * Spectator / TV view for Looping Louie.
- * Large circular display optimized for a shared screen.
- * Read-only — no inputs.
- */
-export function LoopingLouieSpectator({
-  players,
-  stateJson,
-}: GameProps) {
+function buildSpectatorArcsGradient(
+  playerZones: Record<number, number>,
+  playerNumbers: number[]
+): string {
+  const stops: string[] = [];
+  const zones = playerNumbers
+    .map((pn, i) => ({
+      pn,
+      angle: playerZones[pn],
+      color: getPlayerColor(i),
+    }))
+    .sort((a, b) => a.angle - b.angle);
+
+  for (const zone of zones) {
+    const startAngle = ((zone.angle - PADDLE_WINDOW_DEGREES + 360) % 360);
+    const endAngle = ((zone.angle + PADDLE_WINDOW_DEGREES) % 360);
+    const hex = Math.round(0.15 * 255).toString(16).padStart(2, '0');
+    stops.push(`transparent ${startAngle}deg`);
+    stops.push(`${zone.color}${hex} ${startAngle}deg`);
+    stops.push(`${zone.color}${hex} ${endAngle}deg`);
+    stops.push(`transparent ${endAngle}deg`);
+  }
+
+  return `conic-gradient(from 0deg, ${stops.join(', ')})`;
+}
+
+export function LoopingLouieSpectator({ players, stateJson }: GameProps) {
   const stateJsonRef = useRef(stateJson);
   useEffect(() => {
     stateJsonRef.current = stateJson;
@@ -45,17 +64,12 @@ export function LoopingLouieSpectator({
   let state: LoopingLouieState | null = null;
   try {
     const parsed = stateJson ? JSON.parse(stateJson) : null;
-    if (parsed && parsed.phase) {
-      state = parsed as LoopingLouieState;
-    }
-  } catch {
-    // Invalid JSON
-  }
+    if (parsed && parsed.phase) state = parsed as LoopingLouieState;
+  } catch { /* */ }
 
-  // Smooth animation loop
+  // Smooth animation
   useEffect(() => {
     if (!state || (state.phase !== 'playing' && state.phase !== 'finished')) return;
-
     const frame = () => {
       const current = JSON.parse(stateJsonRef.current || '{}') as LoopingLouieState;
       if (current.phase === 'playing' || current.phase === 'finished') {
@@ -64,7 +78,6 @@ export function LoopingLouieSpectator({
       }
       rafId = requestAnimationFrame(frame);
     };
-
     let rafId = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafId);
   }, [state?.phase]);
@@ -76,34 +89,52 @@ export function LoopingLouieSpectator({
     if (eventKey === lastEventRef.current) return;
     lastEventRef.current = eventKey;
 
-    const getPlayerName = (pn: number) =>
+    const getName = (pn: number) =>
       players.find((p) => p.playerNumber === pn)?.name || `P${pn}`;
 
     let text = '';
-    if (state.lastEvent.type === 'hit') {
-      text = `🐔 ${getPlayerName(state.lastEvent.player)} lost a chicken! DRINK!`;
-    } else if (state.lastEvent.type === 'deflect') {
-      text = `🏓 ${getPlayerName(state.lastEvent.player)} deflected!`;
-    } else if (state.lastEvent.type === 'eliminate') {
-      text = `💀 ${getPlayerName(state.lastEvent.player)} eliminated! FINISH YOUR DRINK!`;
-    }
+    if (state.lastEvent.type === 'hit') text = `🐔 ${getName(state.lastEvent.player)} lost a chicken! DRINK!`;
+    else if (state.lastEvent.type === 'deflect') text = `🏓 ${getName(state.lastEvent.player)} deflected!`;
+    else if (state.lastEvent.type === 'eliminate') text = `💀 ${getName(state.lastEvent.player)} eliminated! FINISH YOUR DRINK!`;
 
     if (text) {
       const id = ++toastIdRef.current;
       setToasts((prev) => [...prev.slice(-4), { id, text, type: state!.lastEvent!.type }]);
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 3000);
+      setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
     }
   }, [state?.lastEvent, players]);
 
-  const getPlayerName = (pn: number) =>
+  const getName = (pn: number) =>
     players.find((p) => p.playerNumber === pn)?.name || `P${pn}`;
 
   if (!state) {
     return (
       <div className="ll-spectator">
         <div className="ll-waiting">Waiting for game to start...</div>
+      </div>
+    );
+  }
+
+  // Setup phase — spectator sees config preview
+  if (state.phase === 'setup') {
+    return (
+      <div className="ll-spectator">
+        <div className="ll-countdown-overlay ll-spectator-countdown">
+          <div className="ll-countdown-title">Looping Louie</div>
+          <div className="ll-config-preview" style={{ fontSize: '1.2rem' }}>
+            <span>Speed: {state.config.speed}</span>
+            <span>Chickens: {state.config.chickensPerPlayer}</span>
+            <span>Chaos: {state.config.chaosMode ? 'On' : 'Off'}</span>
+          </div>
+          <div className="ll-spectator-players">
+            {playerNumbers.map((pn, i) => (
+              <span key={pn} style={{ color: getPlayerColor(i), fontWeight: 700, fontSize: '1.3rem' }}>
+                {getName(pn)}
+              </span>
+            ))}
+          </div>
+          <p style={{ color: 'var(--text-muted)' }}>Waiting for host to start...</p>
+        </div>
       </div>
     );
   }
@@ -121,7 +152,7 @@ export function LoopingLouieSpectator({
           <div className="ll-spectator-players">
             {playerNumbers.map((pn, i) => (
               <span key={pn} style={{ color: getPlayerColor(i), fontWeight: 700, fontSize: '1.3rem' }}>
-                {getPlayerName(pn)}
+                {getName(pn)}
               </span>
             ))}
           </div>
@@ -129,6 +160,10 @@ export function LoopingLouieSpectator({
       </div>
     );
   }
+
+  // Build arcs gradient
+  const arcsGradient = buildSpectatorArcsGradient(playerZones, playerNumbers);
+  const maxChickens = state.config.chickensPerPlayer;
 
   // Playing / Finished
   return (
@@ -145,7 +180,10 @@ export function LoopingLouieSpectator({
       {/* Large circular track */}
       <div className="ll-spectator-track-container">
         <div className="ll-track ll-spectator-track">
-          {/* Zone indicators with player info */}
+          {/* Zone arcs */}
+          <div className="ll-zone-arcs" style={{ background: arcsGradient }} />
+
+          {/* Zone labels */}
           {playerNumbers.map((pn, i) => {
             const angle = playerZones[pn];
             const eliminated = state!.eliminated.includes(pn);
@@ -161,15 +199,16 @@ export function LoopingLouieSpectator({
                 } as React.CSSProperties}
               >
                 <div className="ll-zone-label ll-spectator-zone-label">
-                  <span className="ll-zone-name">{getPlayerName(pn)}</span>
+                  <span className="ll-zone-name">{getName(pn)}</span>
+                  <span className="ll-zone-barn">🏠</span>
                   <span className="ll-zone-chickens">
-                    {Array.from({ length: 3 }).map((_, ci) => (
+                    {Array.from({ length: maxChickens }).map((_, ci) => (
                       <span key={ci} className={`ll-mini-chicken ${ci >= chickens ? 'lost' : ''}`}>
-                        &#x1F414;
+                        🐔
                       </span>
                     ))}
                   </span>
-                  <span className="ll-zone-drinks">{drinks} drinks</span>
+                  <span className="ll-zone-drinks">🍺 {drinks}</span>
                 </div>
               </div>
             );
@@ -177,13 +216,13 @@ export function LoopingLouieSpectator({
 
           {/* Plane */}
           <div
-            className="ll-plane ll-spectator-plane"
+            className={`ll-plane ll-spectator-plane ${localHeight < 0.35 ? 'low' : ''}`}
             style={{
               '--plane-angle': `${localAngle}deg`,
               '--plane-height': localHeight,
             } as React.CSSProperties}
           >
-            &#x2708;
+            🛩️
           </div>
 
           <div className="ll-center" />
@@ -195,17 +234,15 @@ export function LoopingLouieSpectator({
         <div className="ll-spectator-result">
           <h2>Game Over!</h2>
           {state.winner && (
-            <p className="ll-spectator-winner">
-              &#x1F3C6; {getPlayerName(state.winner)} wins!
-            </p>
+            <p className="ll-spectator-winner">🏆 {getName(state.winner)} wins!</p>
           )}
           <div className="ll-spectator-drink-tally">
             {playerNumbers.map((pn, i) => (
               <div key={pn} className="ll-spectator-tally-row">
                 <span style={{ color: getPlayerColor(i), fontWeight: 700 }}>
-                  {getPlayerName(pn)}
+                  {getName(pn)}
                 </span>
-                <span>{state!.drinks[pn] ?? 0} drinks</span>
+                <span>🍺 {state!.drinks[pn] ?? 0} drinks</span>
               </div>
             ))}
           </div>

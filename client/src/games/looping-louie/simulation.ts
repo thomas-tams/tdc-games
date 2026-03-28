@@ -2,13 +2,26 @@
 // Looping Louie — Pure simulation logic (no React dependency)
 // ============================================================================
 
+export interface LoopingLouieConfig {
+  speed: 'slow' | 'normal' | 'fast';
+  chickensPerPlayer: 3 | 5;
+  chaosMode: boolean;
+}
+
+export const DEFAULT_CONFIG: LoopingLouieConfig = {
+  speed: 'normal',
+  chickensPerPlayer: 3,
+  chaosMode: false,
+};
+
 export interface LoopingLouieState {
-  phase: 'countdown' | 'playing' | 'finished';
+  phase: 'setup' | 'countdown' | 'playing' | 'finished';
+  config: LoopingLouieConfig;
   planeAngle: number;           // 0-360 degrees, position on circular track
   planeSpeed: number;           // degrees/second
   planeHeight: number;          // 0-1, where 0 = ground level (hits chickens)
   planeHeightVelocity: number;  // rate of height change per second
-  chickens: Record<number, number>;      // playerNumber -> remaining chickens (0-3)
+  chickens: Record<number, number>;      // playerNumber -> remaining chickens
   paddlePresses: Record<number, number>; // playerNumber -> timestamp (0 = not pressed)
   eliminated: number[];
   winner: number | null;
@@ -20,6 +33,7 @@ export interface LoopingLouieState {
   drinks: Record<number, number>;
   countdownEnd: number;
   nextSpeedChange: number;      // timestamp for next random speed variation
+  nextChaosEvent: number;       // timestamp for next chaos event
   // Track which zones have been "visited" this revolution to prevent double-hits
   visitedZones: number[];
 }
@@ -28,17 +42,22 @@ export interface LoopingLouieState {
 // Constants
 // ============================================================================
 
-export const CHICKENS_PER_PLAYER = 3;
-export const BASE_SPEED = 120;          // degrees/second (~3 seconds per revolution)
-export const SPEED_VARIATION = 40;      // +/- random variation
-export const SPEED_CHANGE_INTERVAL = 3000; // ms between speed changes
-export const GRAVITY = 1.8;             // height decay per second
-export const DEFLECT_IMPULSE = 2.5;     // upward impulse from successful paddle
+export const SPEED_MAP: Record<LoopingLouieConfig['speed'], number> = {
+  slow: 150,
+  normal: 240,
+  fast: 340,
+};
+
+export const SPEED_VARIATION = 60;       // +/- random variation
+export const SPEED_CHANGE_INTERVAL = 2500; // ms between speed changes
+export const GRAVITY = 2.5;              // height decay per second
+export const DEFLECT_IMPULSE = 3.0;      // upward impulse from successful paddle
 export const MAX_HEIGHT = 1.0;
-export const HIT_HEIGHT_THRESHOLD = 0.3; // plane must be below this to hit chickens
-export const PADDLE_WINDOW_DEGREES = 20; // +/- degrees from zone center for valid paddle
-export const PADDLE_COOLDOWN_MS = 500;   // minimum ms between paddle presses per player
+export const HIT_HEIGHT_THRESHOLD = 0.35; // plane must be below this to hit chickens
+export const PADDLE_WINDOW_DEGREES = 25;  // +/- degrees from zone center for valid paddle
+export const PADDLE_COOLDOWN_MS = 500;    // minimum ms between paddle presses per player
 export const COUNTDOWN_SECONDS = 3;
+export const CHAOS_EVENT_INTERVAL = 5000; // ms between chaos events
 
 // ============================================================================
 // Zone helpers
@@ -60,16 +79,34 @@ export function isPlaneInZone(planeAngle: number, zoneCenterAngle: number): bool
   return Math.abs(diff) <= PADDLE_WINDOW_DEGREES;
 }
 
-/** Angular distance (signed) between two angles */
-function angleDiff(a: number, b: number): number {
-  return ((a - b + 540) % 360) - 180;
-}
-
 // ============================================================================
 // State creation
 // ============================================================================
 
-export function createInitialState(
+export function createInitialState(): LoopingLouieState {
+  return {
+    phase: 'setup',
+    config: { ...DEFAULT_CONFIG },
+    planeAngle: 0,
+    planeSpeed: 0,
+    planeHeight: 0.8,
+    planeHeightVelocity: 0,
+    chickens: {},
+    paddlePresses: {},
+    eliminated: [],
+    winner: null,
+    lastEvent: null,
+    drinks: {},
+    countdownEnd: 0,
+    nextSpeedChange: 0,
+    nextChaosEvent: 0,
+    visitedZones: [],
+  };
+}
+
+/** Transition from setup → countdown, initializing player data */
+export function startGame(
+  state: LoopingLouieState,
   playerNumbers: number[],
   now: number
 ): LoopingLouieState {
@@ -78,15 +115,18 @@ export function createInitialState(
   const drinks: Record<number, number> = {};
 
   for (const pn of playerNumbers) {
-    chickens[pn] = CHICKENS_PER_PLAYER;
+    chickens[pn] = state.config.chickensPerPlayer;
     paddlePresses[pn] = 0;
     drinks[pn] = 0;
   }
 
+  const baseSpeed = SPEED_MAP[state.config.speed];
+
   return {
+    ...state,
     phase: 'countdown',
     planeAngle: 0,
-    planeSpeed: BASE_SPEED,
+    planeSpeed: baseSpeed,
     planeHeight: 0.8,
     planeHeightVelocity: 0,
     chickens,
@@ -97,6 +137,7 @@ export function createInitialState(
     drinks,
     countdownEnd: now + COUNTDOWN_SECONDS * 1000,
     nextSpeedChange: now + SPEED_CHANGE_INTERVAL,
+    nextChaosEvent: now + CHAOS_EVENT_INTERVAL,
     visitedZones: [],
   };
 }
@@ -113,11 +154,12 @@ export function tickSimulation(
 ): LoopingLouieState {
   if (state.phase !== 'playing') return state;
 
+  const baseSpeed = SPEED_MAP[state.config.speed];
   const next = { ...state };
 
   // Advance plane position
   const prevAngle = next.planeAngle;
-  next.planeAngle = (next.planeAngle + next.planeSpeed * dt) % 360;
+  next.planeAngle = (next.planeAngle + next.planeSpeed * dt + 360) % 360;
 
   // Apply gravity to height
   next.planeHeightVelocity -= GRAVITY * dt;
@@ -130,15 +172,28 @@ export function tickSimulation(
   }
   if (next.planeHeight < 0) {
     next.planeHeight = 0;
-    // Bounce slightly off the ground
     next.planeHeightVelocity = Math.abs(next.planeHeightVelocity) * 0.3;
   }
 
   // Random speed variation
   if (now >= next.nextSpeedChange) {
-    next.planeSpeed = BASE_SPEED + (Math.random() * 2 - 1) * SPEED_VARIATION;
-    next.planeSpeed = Math.max(60, Math.min(200, next.planeSpeed));
+    next.planeSpeed = baseSpeed + (Math.random() * 2 - 1) * SPEED_VARIATION;
+    next.planeSpeed = Math.max(baseSpeed * 0.5, Math.min(baseSpeed * 1.5, next.planeSpeed));
     next.nextSpeedChange = now + SPEED_CHANGE_INTERVAL;
+  }
+
+  // Chaos mode events: random direction reversal or speed spike
+  if (state.config.chaosMode && now >= next.nextChaosEvent) {
+    const event = Math.random();
+    if (event < 0.3) {
+      // Reverse direction
+      next.planeSpeed = -next.planeSpeed;
+    } else if (event < 0.6) {
+      // Speed spike
+      next.planeSpeed = next.planeSpeed * 1.8;
+    }
+    // else: nothing happens (keeps it unpredictable)
+    next.nextChaosEvent = now + CHAOS_EVENT_INTERVAL + Math.random() * 3000;
   }
 
   // Process paddle presses and zone collisions
@@ -159,15 +214,13 @@ export function tickSimulation(
     const wasInZone = isPlaneInZone(prevAngle, zoneAngle);
 
     if (inZone) {
-      // Check for paddle press
       const pressTime = next.paddlePresses[pn];
       if (pressTime > 0) {
-        // Valid deflection — paddle was pressed while plane in zone
+        // Valid deflection
         next.planeHeightVelocity = DEFLECT_IMPULSE;
-        next.planeHeight = Math.max(next.planeHeight, 0.2); // minimum boost
+        next.planeHeight = Math.max(next.planeHeight, 0.2);
         next.paddlePresses[pn] = 0;
         next.lastEvent = { type: 'deflect', player: pn, timestamp: now };
-        // Mark zone as visited (safe)
         if (!next.visitedZones.includes(pn)) {
           next.visitedZones.push(pn);
         }
@@ -178,7 +231,6 @@ export function tickSimulation(
         next.lastEvent = { type: 'hit', player: pn, timestamp: now };
         next.visitedZones.push(pn);
 
-        // Check elimination
         if (next.chickens[pn] <= 0 && !next.eliminated.includes(pn)) {
           next.eliminated.push(pn);
           next.lastEvent = { type: 'eliminate', player: pn, timestamp: now };
@@ -191,9 +243,8 @@ export function tickSimulation(
       next.visitedZones = next.visitedZones.filter((z) => z !== pn);
     }
 
-    // Clear stale paddle presses (pressed too early, outside zone)
+    // Clear stale paddle presses
     if (next.paddlePresses[pn] > 0 && !inZone) {
-      // If the press is old (> cooldown), clear it
       if (now - next.paddlePresses[pn] > PADDLE_COOLDOWN_MS) {
         next.paddlePresses[pn] = 0;
       }
