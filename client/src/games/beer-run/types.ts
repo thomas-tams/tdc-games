@@ -68,9 +68,10 @@ export const PLAYER_X = 150;
 export const PLAYER_WIDTH = 40;
 export const PLAYER_HEIGHT = 50;
 
-export const GRAVITY = 1800;
-export const JUMP_VELOCITY = 700;
-export const MAX_FALL_SPEED = -1200;
+export const GRAVITY = 1200;
+export const JUMP_VELOCITY = 800;
+export const FAST_FALL_GRAVITY = 2400; // faster falling for snappy Chrome dino feel
+export const MAX_FALL_SPEED = -1400;
 
 export const COUNTDOWN_SECONDS = 3;
 export const SYNC_INTERVAL = 100;
@@ -106,8 +107,8 @@ export const MIN_SPAWN_INTERVAL = 0.3;
 // ============================================================================
 
 export const OBSTACLE_DEFS: Record<ObstacleType, { emoji: string; width: number; height: number; label: string }> = {
-  bottle:  { emoji: '🍾', width: 30, height: 55, label: 'Bottle' },
-  stool:   { emoji: '🪑', width: 45, height: 50, label: 'Bar Stool' },
+  bottle:  { emoji: '🍾', width: 30, height: 50, label: 'Bottle' },
+  stool:   { emoji: '🪑', width: 45, height: 45, label: 'Bar Stool' },
   pothole: { emoji: '🕳️', width: 50, height: 20, label: 'Pothole' },
   ice:     { emoji: '🧊', width: 35, height: 35, label: 'Ice Cube' },
   pizza:   { emoji: '🍕', width: 40, height: 25, label: 'Pizza Box' },

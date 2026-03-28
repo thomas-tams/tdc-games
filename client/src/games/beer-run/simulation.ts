@@ -14,6 +14,7 @@ import {
   PLAYER_WIDTH,
   PLAYER_HEIGHT,
   GRAVITY,
+  FAST_FALL_GRAVITY,
   JUMP_VELOCITY,
   MAX_FALL_SPEED,
   SPEED_MAP,
@@ -220,8 +221,9 @@ export function tickSimulation(
       }
     }
 
-    // Apply gravity
-    ps.vy -= GRAVITY * dt;
+    // Apply asymmetric gravity (Chrome dino style: floaty up, snappy down)
+    const g = ps.vy > 0 ? GRAVITY : FAST_FALL_GRAVITY;
+    ps.vy -= g * dt;
     ps.vy = Math.max(ps.vy, MAX_FALL_SPEED);
 
     // Update position
