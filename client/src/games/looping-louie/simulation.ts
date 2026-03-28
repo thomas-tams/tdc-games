@@ -146,11 +146,18 @@ export function startGame(
 // Simulation tick (host-authoritative)
 // ============================================================================
 
+/**
+ * Run one tick of the simulation.
+ * @param isHost - Only the host processes random events (speed changes, chaos),
+ *                 zone collisions, and win conditions. Non-host clients run
+ *                 physics locally for prediction.
+ */
 export function tickSimulation(
   state: LoopingLouieState,
   dt: number,
   playerZones: Record<number, number>,
-  now: number
+  now: number,
+  isHost = true
 ): LoopingLouieState {
   if (state.phase !== 'playing') return state;
 
@@ -175,87 +182,82 @@ export function tickSimulation(
     next.planeHeightVelocity = Math.abs(next.planeHeightVelocity) * 0.3;
   }
 
-  // Random speed variation
-  if (now >= next.nextSpeedChange) {
+  // Random speed variation (host only — randomness must be authoritative)
+  if (isHost && now >= next.nextSpeedChange) {
     next.planeSpeed = baseSpeed + (Math.random() * 2 - 1) * SPEED_VARIATION;
     next.planeSpeed = Math.max(baseSpeed * 0.5, Math.min(baseSpeed * 1.5, next.planeSpeed));
     next.nextSpeedChange = now + SPEED_CHANGE_INTERVAL;
   }
 
-  // Chaos mode events: random direction reversal or speed spike
-  if (state.config.chaosMode && now >= next.nextChaosEvent) {
+  // Chaos mode events (host only)
+  if (isHost && state.config.chaosMode && now >= next.nextChaosEvent) {
     const event = Math.random();
     if (event < 0.3) {
-      // Reverse direction
       next.planeSpeed = -next.planeSpeed;
     } else if (event < 0.6) {
-      // Speed spike
       next.planeSpeed = next.planeSpeed * 1.8;
     }
-    // else: nothing happens (keeps it unpredictable)
     next.nextChaosEvent = now + CHAOS_EVENT_INTERVAL + Math.random() * 3000;
   }
 
-  // Process paddle presses and zone collisions
-  const activePlayers = Object.keys(playerZones)
-    .map(Number)
-    .filter((pn) => !next.eliminated.includes(pn));
+  // Zone collisions and paddle processing (host only — authoritative)
+  if (isHost) {
+    const activePlayers = Object.keys(playerZones)
+      .map(Number)
+      .filter((pn) => !next.eliminated.includes(pn));
 
-  // Copy mutable fields
-  next.chickens = { ...next.chickens };
-  next.paddlePresses = { ...next.paddlePresses };
-  next.drinks = { ...next.drinks };
-  next.eliminated = [...next.eliminated];
-  next.visitedZones = [...next.visitedZones];
+    // Copy mutable fields
+    next.chickens = { ...next.chickens };
+    next.paddlePresses = { ...next.paddlePresses };
+    next.drinks = { ...next.drinks };
+    next.eliminated = [...next.eliminated];
+    next.visitedZones = [...next.visitedZones];
 
-  for (const pn of activePlayers) {
-    const zoneAngle = playerZones[pn];
-    const inZone = isPlaneInZone(next.planeAngle, zoneAngle);
-    const wasInZone = isPlaneInZone(prevAngle, zoneAngle);
+    for (const pn of activePlayers) {
+      const zoneAngle = playerZones[pn];
+      const inZone = isPlaneInZone(next.planeAngle, zoneAngle);
+      const wasInZone = isPlaneInZone(prevAngle, zoneAngle);
 
-    if (inZone) {
-      const pressTime = next.paddlePresses[pn];
-      if (pressTime > 0) {
-        // Valid deflection
-        next.planeHeightVelocity = DEFLECT_IMPULSE;
-        next.planeHeight = Math.max(next.planeHeight, 0.2);
-        next.paddlePresses[pn] = 0;
-        next.lastEvent = { type: 'deflect', player: pn, timestamp: now };
-        if (!next.visitedZones.includes(pn)) {
+      if (inZone) {
+        const pressTime = next.paddlePresses[pn];
+        if (pressTime > 0) {
+          next.planeHeightVelocity = DEFLECT_IMPULSE;
+          next.planeHeight = Math.max(next.planeHeight, 0.2);
+          next.paddlePresses[pn] = 0;
+          next.lastEvent = { type: 'deflect', player: pn, timestamp: now };
+          if (!next.visitedZones.includes(pn)) {
+            next.visitedZones.push(pn);
+          }
+        } else if (!next.visitedZones.includes(pn) && next.planeHeight < HIT_HEIGHT_THRESHOLD) {
+          next.chickens[pn] = Math.max(0, next.chickens[pn] - 1);
+          next.drinks[pn] = (next.drinks[pn] || 0) + 1;
+          next.lastEvent = { type: 'hit', player: pn, timestamp: now };
           next.visitedZones.push(pn);
-        }
-      } else if (!next.visitedZones.includes(pn) && next.planeHeight < HIT_HEIGHT_THRESHOLD) {
-        // Plane is low and no paddle — hit!
-        next.chickens[pn] = Math.max(0, next.chickens[pn] - 1);
-        next.drinks[pn] = (next.drinks[pn] || 0) + 1;
-        next.lastEvent = { type: 'hit', player: pn, timestamp: now };
-        next.visitedZones.push(pn);
 
-        if (next.chickens[pn] <= 0 && !next.eliminated.includes(pn)) {
-          next.eliminated.push(pn);
-          next.lastEvent = { type: 'eliminate', player: pn, timestamp: now };
+          if (next.chickens[pn] <= 0 && !next.eliminated.includes(pn)) {
+            next.eliminated.push(pn);
+            next.lastEvent = { type: 'eliminate', player: pn, timestamp: now };
+          }
+        }
+      }
+
+      if (!inZone && wasInZone) {
+        next.visitedZones = next.visitedZones.filter((z) => z !== pn);
+      }
+
+      if (next.paddlePresses[pn] > 0 && !inZone) {
+        if (now - next.paddlePresses[pn] > PADDLE_COOLDOWN_MS) {
+          next.paddlePresses[pn] = 0;
         }
       }
     }
 
-    // Clear visited zone when plane leaves
-    if (!inZone && wasInZone) {
-      next.visitedZones = next.visitedZones.filter((z) => z !== pn);
+    // Check for winner
+    const alive = activePlayers.filter((pn) => !next.eliminated.includes(pn));
+    if (alive.length <= 1) {
+      next.phase = 'finished';
+      next.winner = alive[0] ?? null;
     }
-
-    // Clear stale paddle presses
-    if (next.paddlePresses[pn] > 0 && !inZone) {
-      if (now - next.paddlePresses[pn] > PADDLE_COOLDOWN_MS) {
-        next.paddlePresses[pn] = 0;
-      }
-    }
-  }
-
-  // Check for winner
-  const alive = activePlayers.filter((pn) => !next.eliminated.includes(pn));
-  if (alive.length <= 1) {
-    next.phase = 'finished';
-    next.winner = alive[0] ?? null;
   }
 
   return next;

@@ -9,6 +9,7 @@ import {
   SPEED_MAP,
   getRandomDeathMessage,
 } from './types';
+import { tickSimulation } from './simulation';
 import './BeerRun.css';
 
 function getPlayerColor(index: number): string {
@@ -35,21 +36,74 @@ export function BeerRunSpectator({
   const [countdown, setCountdown] = useState<number | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [splashes, setSplashes] = useState<Splash[]>([]);
+  const [localState, setLocalState] = useState<BeerRunState | null>(null);
+  const localStateRef = useRef<BeerRunState | null>(null);
   const lastEventRef = useRef<number>(0);
   const toastIdRef = useRef(0);
 
   const playerNumbers = players.map((p) => p.playerNumber).sort((a, b) => a - b);
 
-  // Parse state
-  let state: BeerRunState | null = null;
+  const playerNameMap: Record<number, string> = {};
+  for (const p of players) {
+    playerNameMap[p.playerNumber] = p.name;
+  }
+
+  // Parse server state
+  let serverState: BeerRunState | null = null;
   try {
     const parsed = stateJson ? JSON.parse(stateJson) : null;
     if (parsed && parsed.phase) {
-      state = parsed as BeerRunState;
+      serverState = parsed as BeerRunState;
     }
   } catch {
     // Invalid JSON
   }
+
+  // Use local interpolated state when playing, server state otherwise
+  const state = (localState && localState.phase === 'playing') ? localState : serverState;
+
+  // === Local interpolation loop for smooth rendering ===
+  useEffect(() => {
+    if (!serverState || serverState.phase !== 'playing') {
+      localStateRef.current = null;
+      setLocalState(null);
+      return;
+    }
+
+    if (!localStateRef.current || localStateRef.current.phase !== 'playing') {
+      localStateRef.current = JSON.parse(JSON.stringify(serverState));
+    }
+
+    let lastTime = performance.now();
+
+    const frame = (now: number) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      if (!localStateRef.current || localStateRef.current.phase !== 'playing') {
+        rafId = requestAnimationFrame(frame);
+        return;
+      }
+
+      // Run physics-only simulation (not host — no spawning/collision)
+      localStateRef.current = tickSimulation(
+        localStateRef.current, dt, Date.now(), playerNameMap, false
+      );
+
+      setLocalState({ ...localStateRef.current });
+      rafId = requestAnimationFrame(frame);
+    };
+
+    let rafId = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(rafId);
+  }, [serverState?.phase]);
+
+  // === Reconcile with server state ===
+  useEffect(() => {
+    if (!serverState || serverState.phase !== 'playing' || !localStateRef.current) return;
+    // Snap everything from server (spectator has no local input to preserve)
+    localStateRef.current = JSON.parse(JSON.stringify(serverState));
+  }, [stateJson]);
 
   const getPlayerName = (pn: number) =>
     players.find((p) => p.playerNumber === pn)?.name || `P${pn}`;
@@ -71,11 +125,11 @@ export function BeerRunSpectator({
 
   // === Track events for toasts ===
   useEffect(() => {
-    if (!state?.lastEvent) return;
-    if (state.lastEvent.timestamp <= lastEventRef.current) return;
-    lastEventRef.current = state.lastEvent.timestamp;
+    if (!serverState?.lastEvent) return;
+    if (serverState.lastEvent.timestamp <= lastEventRef.current) return;
+    lastEventRef.current = serverState.lastEvent.timestamp;
 
-    const evt = state.lastEvent;
+    const evt = serverState.lastEvent;
     const msg = getRandomDeathMessage(evt.playerName, evt.obstacleType);
     const id = ++toastIdRef.current;
     setToasts((prev) => [...prev.slice(-4), { id, message: msg, timestamp: Date.now() }]);
@@ -85,7 +139,7 @@ export function BeerRunSpectator({
     if (laneIndex >= 0) {
       setSplashes((prev) => [...prev, { id, laneIndex, emoji: '💥', timestamp: Date.now() }]);
     }
-  }, [state?.lastEvent?.timestamp]);
+  }, [serverState?.lastEvent?.timestamp]);
 
   // === Clean up old toasts and splashes ===
   useEffect(() => {

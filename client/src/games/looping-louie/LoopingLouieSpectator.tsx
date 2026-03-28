@@ -3,6 +3,7 @@ import type { GameProps } from '../types';
 import {
   type LoopingLouieState,
   getPlayerZones,
+  tickSimulation,
   PADDLE_WINDOW_DEGREES,
 } from './simulation';
 import './LoopingLouie.css';
@@ -50,6 +51,7 @@ export function LoopingLouieSpectator({ players, stateJson }: GameProps) {
   const [toasts, setToasts] = useState<Array<{ id: number; text: string; type: string }>>([]);
   const toastIdRef = useRef(0);
   const lastEventRef = useRef<string | null>(null);
+  const localStateRef = useRef<LoopingLouieState | null>(null);
 
   const playerNumbers = useMemo(
     () => players.map((p) => p.playerNumber).sort((a, b) => a - b),
@@ -67,20 +69,44 @@ export function LoopingLouieSpectator({ players, stateJson }: GameProps) {
     if (parsed && parsed.phase) state = parsed as LoopingLouieState;
   } catch { /* */ }
 
-  // Smooth animation
+  // Local simulation for smooth animation between server syncs
   useEffect(() => {
-    if (!state || (state.phase !== 'playing' && state.phase !== 'finished')) return;
-    const frame = () => {
-      const current = JSON.parse(stateJsonRef.current || '{}') as LoopingLouieState;
-      if (current.phase === 'playing' || current.phase === 'finished') {
-        setLocalAngle(current.planeAngle);
-        setLocalHeight(current.planeHeight);
+    if (!state || (state.phase !== 'playing' && state.phase !== 'finished')) {
+      localStateRef.current = null;
+      return;
+    }
+
+    if (!localStateRef.current || localStateRef.current.phase !== 'playing') {
+      localStateRef.current = JSON.parse(JSON.stringify(state));
+    }
+
+    let lastTime = performance.now();
+
+    const frame = (now: number) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      if (localStateRef.current && localStateRef.current.phase === 'playing') {
+        // Run physics-only simulation (not host)
+        localStateRef.current = tickSimulation(
+          localStateRef.current, dt, playerZones, Date.now(), false
+        );
+        setLocalAngle(localStateRef.current.planeAngle);
+        setLocalHeight(localStateRef.current.planeHeight);
       }
+
       rafId = requestAnimationFrame(frame);
     };
     let rafId = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafId);
-  }, [state?.phase]);
+  }, [state?.phase, playerZones]);
+
+  // Reconcile with server state
+  useEffect(() => {
+    if (!state || state.phase !== 'playing') return;
+    // Snap to server state (spectator has no local input to preserve)
+    localStateRef.current = JSON.parse(JSON.stringify(state));
+  }, [stateJson]);
 
   // Event toasts
   useEffect(() => {

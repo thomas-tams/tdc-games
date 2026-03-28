@@ -116,11 +116,17 @@ function spawnObstacle(state: BeerRunState): Obstacle {
 // Simulation tick (host-authoritative)
 // ============================================================================
 
+/**
+ * Run one tick of the simulation.
+ * @param isHost - Only the host spawns obstacles and checks eliminations.
+ *                 Non-host clients run physics locally for prediction.
+ */
 export function tickSimulation(
   state: BeerRunState,
   dt: number,
   now: number,
-  playerNames: Record<number, string>
+  playerNames: Record<number, string>,
+  isHost = true
 ): BeerRunState {
   if (state.phase !== 'playing') return state;
 
@@ -156,39 +162,45 @@ export function tickSimulation(
     }
   }
 
-  // --- Spawn obstacles ---
-  next.spawnTimer -= dt;
-  if (next.spawnTimer <= 0 && next.obstacles.length < MAX_OBSTACLES) {
-    const obstacle = spawnObstacle(next);
-    next.obstacles.push(obstacle);
-    next.nextObstacleId++;
-
-    // After 30s: occasionally spawn pairs (30% chance)
-    if (next.gameTime > 30 && Math.random() < 0.3) {
-      const second = spawnObstacle(next);
-      second.id = next.nextObstacleId;
-      second.x = WORLD_WIDTH + 50 + 80 + Math.random() * 60; // small gap after first
-      next.obstacles.push(second);
-      next.nextObstacleId++;
+  // --- Spawn obstacles (host only — non-host clients just move existing obstacles) ---
+  if (isHost) {
+    // Guard against NaN or invalid spawnTimer
+    if (!Number.isFinite(next.spawnTimer) || next.spawnTimer > 10) {
+      next.spawnTimer = DENSITY_MAP[next.config.density];
     }
-
-    // After 60s: occasionally spawn tall obstacles (20% chance)
-    if (next.gameTime > 60 && Math.random() < 0.2) {
-      const tall: Obstacle = {
-        id: next.nextObstacleId,
-        x: WORLD_WIDTH + 50 + 200 + Math.random() * 100,
-        type: 'stool',
-        width: 50,
-        height: 65, // extra tall
-      };
-      next.obstacles.push(tall);
+    next.spawnTimer -= dt;
+    if (next.spawnTimer <= 0 && next.obstacles.length < MAX_OBSTACLES) {
+      const obstacle = spawnObstacle(next);
+      next.obstacles.push(obstacle);
       next.nextObstacleId++;
-    }
 
-    // Reset spawn timer with variance
-    const baseDensity = DENSITY_MAP[next.config.density];
-    const adjustedInterval = Math.max(MIN_SPAWN_INTERVAL, baseDensity / rampMultiplier);
-    next.spawnTimer = adjustedInterval * (0.7 + Math.random() * 0.6);
+      // After 30s: occasionally spawn pairs (30% chance)
+      if (next.gameTime > 30 && Math.random() < 0.3) {
+        const second = spawnObstacle(next);
+        second.id = next.nextObstacleId;
+        second.x = WORLD_WIDTH + 50 + 80 + Math.random() * 60;
+        next.obstacles.push(second);
+        next.nextObstacleId++;
+      }
+
+      // After 60s: occasionally spawn tall obstacles (20% chance)
+      if (next.gameTime > 60 && Math.random() < 0.2) {
+        const tall: Obstacle = {
+          id: next.nextObstacleId,
+          x: WORLD_WIDTH + 50 + 200 + Math.random() * 100,
+          type: 'stool',
+          width: 50,
+          height: 65,
+        };
+        next.obstacles.push(tall);
+        next.nextObstacleId++;
+      }
+
+      // Reset spawn timer with variance
+      const baseDensity = DENSITY_MAP[next.config.density];
+      const adjustedInterval = Math.max(MIN_SPAWN_INTERVAL, baseDensity / rampMultiplier);
+      next.spawnTimer = adjustedInterval * (0.7 + Math.random() * 0.6);
+    }
   }
 
   // --- Player physics ---
@@ -222,43 +234,43 @@ export function tickSimulation(
     }
   }
 
-  // --- Collision detection ---
-  for (const pn of alivePlayers) {
-    const ps = next.playerStates[pn];
+  // --- Collision detection (host only — authoritative) ---
+  if (isHost) {
+    for (const pn of alivePlayers) {
+      const ps = next.playerStates[pn];
 
-    for (const obs of next.obstacles) {
-      // Player hitbox: positioned at PLAYER_X, bottom at ps.y
-      // Obstacle hitbox: positioned at obs.x, bottom at 0
-      const hit = aabbCollision(
-        PLAYER_X, ps.y, PLAYER_WIDTH, PLAYER_HEIGHT,
-        obs.x, 0, obs.width, obs.height
-      );
+      for (const obs of next.obstacles) {
+        const hit = aabbCollision(
+          PLAYER_X, ps.y, PLAYER_WIDTH, PLAYER_HEIGHT,
+          obs.x, 0, obs.width, obs.height
+        );
 
-      if (hit) {
-        ps.alive = false;
-        ps.eliminatedAt = now;
-        ps.deathObstacleType = obs.type;
-        next.eliminated.push(pn);
-        next.lastEvent = {
-          type: 'eliminate',
-          player: pn,
-          playerName: playerNames[pn] || `Player ${pn}`,
-          obstacleType: obs.type,
-          timestamp: now,
-        };
-        break;
+        if (hit) {
+          ps.alive = false;
+          ps.eliminatedAt = now;
+          ps.deathObstacleType = obs.type;
+          next.eliminated.push(pn);
+          next.lastEvent = {
+            type: 'eliminate',
+            player: pn,
+            playerName: playerNames[pn] || `Player ${pn}`,
+            obstacleType: obs.type,
+            timestamp: now,
+          };
+          break;
+        }
       }
     }
-  }
 
-  // --- Check end condition ---
-  const stillAlive = Object.keys(next.playerStates)
-    .map(Number)
-    .filter((pn) => next.playerStates[pn].alive);
+    // --- Check end condition ---
+    const stillAlive = Object.keys(next.playerStates)
+      .map(Number)
+      .filter((pn) => next.playerStates[pn].alive);
 
-  if (stillAlive.length <= 1) {
-    next.phase = 'finished';
-    next.winner = stillAlive[0] ?? null;
+    if (stillAlive.length <= 1) {
+      next.phase = 'finished';
+      next.winner = stillAlive[0] ?? null;
+    }
   }
 
   return next;

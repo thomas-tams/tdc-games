@@ -9,6 +9,8 @@ import {
   OBSTACLE_DEFS,
   SYNC_INTERVAL,
   SPEED_MAP,
+  JUMP_VELOCITY,
+  DENSITY_MAP,
   getRandomDeathMessage,
 } from './types';
 import { createInitialState, startGame, tickSimulation } from './simulation';
@@ -34,6 +36,9 @@ export function BeerRun({
   const [countdown, setCountdown] = useState<number | null>(null);
   const [jumpFlash, setJumpFlash] = useState(false);
   const [deathMessage, setDeathMessage] = useState<string | null>(null);
+  // Local predicted state for smooth rendering
+  const [localState, setLocalState] = useState<BeerRunState | null>(null);
+  const localStateRef = useRef<BeerRunState | null>(null);
 
   const isHost = playerNumber === Math.min(...players.map((p) => p.playerNumber));
 
@@ -50,16 +55,19 @@ export function BeerRun({
     return map;
   }, [players]);
 
-  // Parse state
-  let state: BeerRunState | null = null;
+  // Parse server state
+  let serverState: BeerRunState | null = null;
   try {
     const parsed = stateJson ? JSON.parse(stateJson) : null;
     if (parsed && parsed.phase) {
-      state = parsed as BeerRunState;
+      serverState = parsed as BeerRunState;
     }
   } catch {
     // Invalid JSON
   }
+
+  // Use local predicted state for rendering when playing, otherwise server state
+  const state = (localState && localState.phase === 'playing') ? localState : serverState;
 
   // Host initializes state
   useEffect(() => {
@@ -70,35 +78,52 @@ export function BeerRun({
 
   // === HOST: Countdown timer ===
   useEffect(() => {
-    if (!isHost || !state || state.phase !== 'countdown') return;
+    if (!isHost || !serverState || serverState.phase !== 'countdown') return;
     const interval = setInterval(() => {
       const current = JSON.parse(stateJsonRef.current || '{}') as BeerRunState;
       if (current.phase !== 'countdown') return;
       if (Date.now() >= current.countdownEnd) {
-        onUpdateState(JSON.stringify({ ...current, phase: 'playing' }));
+        // Transition to playing with clean state
+        const playState: BeerRunState = {
+          ...current,
+          phase: 'playing',
+          gameTime: 0,
+          spawnTimer: DENSITY_MAP[current.config.density],
+        };
+        onUpdateState(JSON.stringify(playState));
       }
     }, 100);
     return () => clearInterval(interval);
-  }, [isHost, state?.phase, onUpdateState]);
+  }, [isHost, serverState?.phase, onUpdateState]);
 
   // === LOCAL: Countdown display ===
   useEffect(() => {
-    if (!state || state.phase !== 'countdown') {
+    if (!serverState || serverState.phase !== 'countdown') {
       setCountdown(null);
       return;
     }
     const update = () => {
-      const remaining = Math.ceil((state!.countdownEnd - Date.now()) / 1000);
+      const remaining = Math.ceil((serverState!.countdownEnd - Date.now()) / 1000);
       setCountdown(Math.max(0, remaining));
     };
     update();
     const interval = setInterval(update, 100);
     return () => clearInterval(interval);
-  }, [state?.phase, state?.countdownEnd]);
+  }, [serverState?.phase, serverState?.countdownEnd]);
 
-  // === HOST: Run simulation loop ===
+  // === ALL CLIENTS: Local simulation loop for prediction ===
   useEffect(() => {
-    if (!isHost || !state || state.phase !== 'playing') return;
+    if (!serverState || serverState.phase !== 'playing') {
+      localStateRef.current = null;
+      setLocalState(null);
+      return;
+    }
+
+    // Initialize local state from server
+    if (!localStateRef.current || localStateRef.current.phase !== 'playing') {
+      localStateRef.current = JSON.parse(JSON.stringify(serverState));
+    }
+
     let lastTime = performance.now();
     let lastSync = 0;
 
@@ -106,27 +131,78 @@ export function BeerRun({
       const dt = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
 
-      const current = JSON.parse(stateJsonRef.current || '{}') as BeerRunState;
-      if (current.phase !== 'playing') return;
-
-      const newState = tickSimulation(current, dt, Date.now(), playerNameMap);
-
-      if (newState.phase === 'finished') {
-        onEndGame(JSON.stringify(newState));
+      if (!localStateRef.current || localStateRef.current.phase !== 'playing') {
+        rafId = requestAnimationFrame(frame);
         return;
       }
 
-      if (now - lastSync >= SYNC_INTERVAL) {
-        onUpdateState(JSON.stringify(newState));
-        lastSync = now;
+      // Run simulation locally — host spawns obstacles, non-host only runs physics
+      localStateRef.current = tickSimulation(
+        localStateRef.current, dt, Date.now(), playerNameMap, isHost
+      );
+
+      // Host syncs authoritative state to SpacetimeDB
+      if (isHost) {
+        if (localStateRef.current.phase === 'finished') {
+          onEndGame(JSON.stringify(localStateRef.current));
+          setLocalState({ ...localStateRef.current });
+          return;
+        }
+
+        if (now - lastSync >= SYNC_INTERVAL) {
+          onUpdateState(JSON.stringify(localStateRef.current));
+          lastSync = now;
+        }
       }
 
+      // Update React state for rendering (~60fps)
+      setLocalState({ ...localStateRef.current });
       rafId = requestAnimationFrame(frame);
     };
 
     let rafId = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafId);
-  }, [isHost, state?.phase, playerNameMap, onUpdateState, onEndGame]);
+  }, [serverState?.phase, isHost, playerNameMap, onUpdateState, onEndGame]);
+
+  // === RECONCILIATION: When server state arrives, merge with local prediction ===
+  useEffect(() => {
+    if (!serverState || serverState.phase !== 'playing' || !localStateRef.current) return;
+
+    const local = localStateRef.current;
+
+    // Snap authoritative fields from server
+    local.obstacles = serverState.obstacles;
+    local.eliminated = [...serverState.eliminated];
+    local.winner = serverState.winner;
+    local.phase = serverState.phase;
+    local.gameTime = serverState.gameTime;
+    local.scrollSpeed = serverState.scrollSpeed;
+    local.spawnTimer = serverState.spawnTimer;
+    local.nextObstacleId = serverState.nextObstacleId;
+    local.lastEvent = serverState.lastEvent;
+    local.config = serverState.config;
+
+    // Reconcile player states
+    for (const pnStr of Object.keys(serverState.playerStates)) {
+      const pn = Number(pnStr);
+      const serverPs = serverState.playerStates[pn];
+      if (!serverPs) continue;
+
+      if (pn === playerNumber && local.playerStates[pn]) {
+        // Own player: keep local y/vy for snappy feel, but snap authoritative fields
+        local.playerStates[pn].alive = serverPs.alive;
+        local.playerStates[pn].eliminatedAt = serverPs.eliminatedAt;
+        local.playerStates[pn].deathObstacleType = serverPs.deathObstacleType;
+        // Clear jumpPressed if server consumed it
+        if (!serverPs.jumpPressed) {
+          local.playerStates[pn].jumpPressed = false;
+        }
+      } else {
+        // Other players: snap to server state entirely
+        local.playerStates[pn] = { ...serverPs };
+      }
+    }
+  }, [stateJson, playerNumber]);
 
   // === Track death message ===
   useEffect(() => {
@@ -157,10 +233,20 @@ export function BeerRun({
 
   const handleJump = useCallback(() => {
     if (isSpectator) return;
+
+    // 1. Apply jump locally FIRST for instant feedback
+    if (localStateRef.current) {
+      const ps = localStateRef.current.playerStates[playerNumber];
+      if (ps?.alive && ps.y <= 1) {
+        ps.vy = JUMP_VELOCITY;
+      }
+    }
+
+    // 2. Also send to host via SpacetimeDB for authoritative processing
     const current = JSON.parse(stateJsonRef.current || '{}') as BeerRunState;
     if (current.phase !== 'playing') return;
-    const ps = current.playerStates[playerNumber];
-    if (!ps || !ps.alive) return;
+    const ps = current.playerStates?.[playerNumber];
+    if (!ps?.alive) return;
 
     onUpdateState(
       JSON.stringify({
@@ -291,10 +377,10 @@ export function BeerRun({
   const amAlive = myState?.alive ?? false;
   const showResult = state.phase === 'finished';
 
-  // Calculate ramp multiplier for speed display
-  const rampMultiplier = state.scrollSpeed / SPEED_MAP[state.config.speed];
+  const rampMultiplier = state.scrollSpeed
+    ? state.scrollSpeed / SPEED_MAP[state.config.speed]
+    : 1;
 
-  // Preview: compute obstacle positions as percentage of preview width
   const previewPlayerX = (PLAYER_X / WORLD_WIDTH) * 100;
 
   return (

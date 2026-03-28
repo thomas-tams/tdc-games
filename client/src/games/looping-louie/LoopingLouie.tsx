@@ -8,11 +8,13 @@ import {
   tickSimulation,
   getPlayerZones,
   isPlaneInZone,
+  DEFLECT_IMPULSE,
   PADDLE_WINDOW_DEGREES,
 } from './simulation';
 import './LoopingLouie.css';
 
 const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12'];
+const SYNC_INTERVAL = 100;
 
 function getPlayerColor(index: number): string {
   return PLAYER_COLORS[index % PLAYER_COLORS.length];
@@ -27,7 +29,6 @@ function buildZoneArcsGradient(
   isSpectator: boolean
 ): string {
   const stops: string[] = [];
-  // Sort zones by angle for proper gradient construction
   const zones = playerNumbers
     .map((pn, i) => ({
       pn,
@@ -41,7 +42,6 @@ function buildZoneArcsGradient(
     const endAngle = ((zone.angle + PADDLE_WINDOW_DEGREES) % 360);
     const isMe = zone.pn === myPlayerNumber && !isSpectator;
 
-    // Check proximity to plane
     const diff = ((planeAngle - zone.angle + 540) % 360) - 180;
     const planeInZone = Math.abs(diff) <= PADDLE_WINDOW_DEGREES;
     const planeNearby = Math.abs(diff) <= 40;
@@ -51,7 +51,6 @@ function buildZoneArcsGradient(
     else if (planeNearby && isMe) opacity = 0.35;
 
     const color = zone.color;
-    // Add transparent before, colored arc, transparent after
     stops.push(`transparent ${startAngle}deg`);
     stops.push(`${color}${Math.round(opacity * 255).toString(16).padStart(2, '0')} ${startAngle}deg`);
     stops.push(`${color}${Math.round(opacity * 255).toString(16).padStart(2, '0')} ${endAngle}deg`);
@@ -79,6 +78,9 @@ export function LoopingLouie({
   const [paddleFlash, setPaddleFlash] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
 
+  // Local predicted state
+  const localStateRef = useRef<LoopingLouieState | null>(null);
+
   const isHost = playerNumber === Math.min(...players.map((p) => p.playerNumber));
 
   const playerNumbers = useMemo(
@@ -93,16 +95,19 @@ export function LoopingLouie({
 
   const myZoneAngle = playerZones[playerNumber] ?? 0;
 
-  // Parse state
-  let state: LoopingLouieState | null = null;
+  // Parse server state
+  let serverState: LoopingLouieState | null = null;
   try {
     const parsed = stateJson ? JSON.parse(stateJson) : null;
     if (parsed && parsed.phase) {
-      state = parsed as LoopingLouieState;
+      serverState = parsed as LoopingLouieState;
     }
   } catch {
     // Invalid JSON
   }
+
+  // For rendering non-physics fields, use server state directly
+  const state = serverState;
 
   // Host initializes state
   useEffect(() => {
@@ -140,53 +145,88 @@ export function LoopingLouie({
     return () => clearInterval(interval);
   }, [state?.phase, state?.countdownEnd]);
 
-  // === HOST: Run simulation loop ===
+  // === ALL CLIENTS: Local simulation loop for prediction ===
   useEffect(() => {
-    if (!isHost || !state || state.phase !== 'playing') return;
+    if (!serverState || serverState.phase !== 'playing') {
+      localStateRef.current = null;
+      return;
+    }
+
+    // Initialize local state from server
+    if (!localStateRef.current || localStateRef.current.phase !== 'playing') {
+      localStateRef.current = JSON.parse(JSON.stringify(serverState));
+    }
+
     let lastTime = performance.now();
     let lastSync = 0;
-    const SYNC_INTERVAL = 100;
 
     const frame = (now: number) => {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
 
-      const current = JSON.parse(stateJsonRef.current || '{}') as LoopingLouieState;
-      if (current.phase !== 'playing') return;
-
-      const newState = tickSimulation(current, dt, playerZones, Date.now());
-
-      if (newState.phase === 'finished') {
-        onEndGame(JSON.stringify(newState));
+      if (!localStateRef.current || localStateRef.current.phase !== 'playing') {
+        rafId = requestAnimationFrame(frame);
         return;
       }
 
-      if (now - lastSync >= SYNC_INTERVAL) {
-        onUpdateState(JSON.stringify(newState));
-        lastSync = now;
+      // Run simulation locally — host does full sim, non-host physics only
+      localStateRef.current = tickSimulation(
+        localStateRef.current, dt, playerZones, Date.now(), isHost
+      );
+
+      // Host syncs authoritative state
+      if (isHost) {
+        if (localStateRef.current.phase === 'finished') {
+          onEndGame(JSON.stringify(localStateRef.current));
+          setLocalAngle(localStateRef.current.planeAngle);
+          setLocalHeight(localStateRef.current.planeHeight);
+          return;
+        }
+
+        if (now - lastSync >= SYNC_INTERVAL) {
+          onUpdateState(JSON.stringify(localStateRef.current));
+          lastSync = now;
+        }
       }
+
+      // Update local rendering state
+      setLocalAngle(localStateRef.current.planeAngle);
+      setLocalHeight(localStateRef.current.planeHeight);
 
       rafId = requestAnimationFrame(frame);
     };
 
     let rafId = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafId);
-  }, [isHost, state?.phase, playerZones, onUpdateState, onEndGame]);
+  }, [serverState?.phase, isHost, playerZones, onUpdateState, onEndGame]);
 
-  // === ALL: Local interpolation ===
+  // === RECONCILIATION: Merge server state with local prediction ===
   useEffect(() => {
-    if (!state || (state.phase !== 'playing' && state.phase !== 'finished')) return;
-    const frame = () => {
-      const current = JSON.parse(stateJsonRef.current || '{}') as LoopingLouieState;
-      if (current.phase === 'playing' || current.phase === 'finished') {
-        setLocalAngle(current.planeAngle);
-        setLocalHeight(current.planeHeight);
-      }
-      rafId = requestAnimationFrame(frame);
-    };
-    let rafId = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(rafId);
-  }, [state?.phase]);
+    if (!serverState || serverState.phase !== 'playing' || !localStateRef.current) return;
+
+    const local = localStateRef.current;
+
+    // Snap authoritative fields from server
+    local.chickens = { ...serverState.chickens };
+    local.paddlePresses = { ...serverState.paddlePresses };
+    local.drinks = { ...serverState.drinks };
+    local.eliminated = [...serverState.eliminated];
+    local.visitedZones = [...serverState.visitedZones];
+    local.winner = serverState.winner;
+    local.phase = serverState.phase;
+    local.lastEvent = serverState.lastEvent;
+    local.config = serverState.config;
+
+    // For non-host: snap physics to server (host is authoritative for plane movement)
+    if (!isHost) {
+      local.planeAngle = serverState.planeAngle;
+      local.planeHeight = serverState.planeHeight;
+      local.planeHeightVelocity = serverState.planeHeightVelocity;
+      local.planeSpeed = serverState.planeSpeed;
+      local.nextSpeedChange = serverState.nextSpeedChange;
+      local.nextChaosEvent = serverState.nextChaosEvent;
+    }
+  }, [stateJson, isHost]);
 
   // === HANDLERS ===
 
@@ -211,6 +251,17 @@ export function LoopingLouie({
     if (current.phase !== 'playing') return;
     if (current.eliminated?.includes(playerNumber)) return;
 
+    // 1. Apply deflection locally FIRST for instant feedback
+    if (localStateRef.current) {
+      const local = localStateRef.current;
+      const inZone = isPlaneInZone(local.planeAngle, myZoneAngle);
+      if (inZone) {
+        local.planeHeightVelocity = DEFLECT_IMPULSE;
+        local.planeHeight = Math.max(local.planeHeight, 0.2);
+      }
+    }
+
+    // 2. Also send to host via SpacetimeDB for authoritative processing
     onUpdateState(
       JSON.stringify({
         ...current,
@@ -221,7 +272,7 @@ export function LoopingLouie({
     setPaddleFlash(true);
     setTimeout(() => setPaddleFlash(false), 200);
     if (navigator.vibrate) navigator.vibrate(50);
-  }, [playerNumber, isSpectator, onUpdateState]);
+  }, [playerNumber, isSpectator, myZoneAngle, onUpdateState]);
 
   // === RENDERING ===
 
@@ -346,7 +397,6 @@ export function LoopingLouie({
   })();
   const showResult = state.phase === 'finished';
 
-  // Build zone arcs gradient
   const arcsGradient = buildZoneArcsGradient(
     playerZones, playerNumbers, playerNumber, localAngle, isSpectator
   );
@@ -371,13 +421,11 @@ export function LoopingLouie({
       {/* Circular track */}
       <div className="ll-track-container">
         <div className="ll-track">
-          {/* Zone arcs overlay */}
           <div
             className="ll-zone-arcs"
             style={{ background: arcsGradient }}
           />
 
-          {/* Zone labels */}
           {playerNumbers.map((pn, i) => {
             const angle = playerZones[pn];
             const isMe = pn === playerNumber;
@@ -407,7 +455,6 @@ export function LoopingLouie({
             );
           })}
 
-          {/* Plane */}
           <div
             className={`ll-plane ${localHeight < 0.35 ? 'low' : ''}`}
             style={{
