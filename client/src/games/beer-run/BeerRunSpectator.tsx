@@ -101,8 +101,29 @@ export function BeerRunSpectator({
   // === Reconcile with server state ===
   useEffect(() => {
     if (!serverState || serverState.phase !== 'playing' || !localStateRef.current) return;
-    // Snap everything from server (spectator has no local input to preserve)
-    localStateRef.current = JSON.parse(JSON.stringify(serverState));
+    const local = localStateRef.current;
+
+    // Merge obstacles by ID: keep local x for existing (smooth), add new from server
+    const localObsById = new Map(local.obstacles.map(o => [o.id, o]));
+    local.obstacles = serverState.obstacles.map(serverObs => {
+      const localObs = localObsById.get(serverObs.id);
+      if (localObs) {
+        return { ...serverObs, x: localObs.x };
+      }
+      return { ...serverObs };
+    });
+
+    // Snap all other fields from server
+    local.playerStates = JSON.parse(JSON.stringify(serverState.playerStates));
+    local.eliminated = [...serverState.eliminated];
+    local.winner = serverState.winner;
+    local.phase = serverState.phase;
+    local.gameTime = serverState.gameTime;
+    local.scrollSpeed = serverState.scrollSpeed;
+    local.spawnTimer = serverState.spawnTimer;
+    local.nextObstacleId = serverState.nextObstacleId;
+    local.lastEvent = serverState.lastEvent;
+    local.config = serverState.config;
   }, [stateJson]);
 
   const getPlayerName = (pn: number) =>

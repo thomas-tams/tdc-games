@@ -9,12 +9,15 @@ import {
   getPlayerZones,
   isPlaneInZone,
   DEFLECT_IMPULSE,
+  GRAVITY,
+  MAX_HEIGHT,
   PADDLE_WINDOW_DEGREES,
 } from './simulation';
 import './LoopingLouie.css';
 
 const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12'];
 const SYNC_INTERVAL = 100;
+const APPROACH_DEGREES = 60; // wider detection zone for "approaching" warning
 
 function getPlayerColor(index: number): string {
   return PLAYER_COLORS[index % PLAYER_COLORS.length];
@@ -44,7 +47,7 @@ function buildZoneArcsGradient(
 
     const diff = ((planeAngle - zone.angle + 540) % 360) - 180;
     const planeInZone = Math.abs(diff) <= PADDLE_WINDOW_DEGREES;
-    const planeNearby = Math.abs(diff) <= 40;
+    const planeNearby = Math.abs(diff) <= APPROACH_DEGREES;
 
     let opacity = isMe ? 0.2 : 0.1;
     if (planeInZone && isMe) opacity = 0.5;
@@ -78,8 +81,17 @@ export function LoopingLouie({
   const [paddleFlash, setPaddleFlash] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
 
-  // Local predicted state
+  // Host uses localStateRef for its authoritative simulation
   const localStateRef = useRef<LoopingLouieState | null>(null);
+
+  // Non-host uses these refs for smooth extrapolation from server state
+  const serverSnapshotRef = useRef<{
+    angle: number;
+    speed: number;
+    height: number;
+    heightVelocity: number;
+    timestamp: number;
+  } | null>(null);
 
   const isHost = playerNumber === Math.min(...players.map((p) => p.playerNumber));
 
@@ -145,14 +157,13 @@ export function LoopingLouie({
     return () => clearInterval(interval);
   }, [state?.phase, state?.countdownEnd]);
 
-  // === ALL CLIENTS: Local simulation loop for prediction ===
+  // === HOST ONLY: Run authoritative simulation ===
   useEffect(() => {
-    if (!serverState || serverState.phase !== 'playing') {
+    if (!isHost || !serverState || serverState.phase !== 'playing') {
       localStateRef.current = null;
       return;
     }
 
-    // Initialize local state from server
     if (!localStateRef.current || localStateRef.current.phase !== 'playing') {
       localStateRef.current = JSON.parse(JSON.stringify(serverState));
     }
@@ -169,27 +180,22 @@ export function LoopingLouie({
         return;
       }
 
-      // Run simulation locally — host does full sim, non-host physics only
       localStateRef.current = tickSimulation(
-        localStateRef.current, dt, playerZones, Date.now(), isHost
+        localStateRef.current, dt, playerZones, Date.now(), true
       );
 
-      // Host syncs authoritative state
-      if (isHost) {
-        if (localStateRef.current.phase === 'finished') {
-          onEndGame(JSON.stringify(localStateRef.current));
-          setLocalAngle(localStateRef.current.planeAngle);
-          setLocalHeight(localStateRef.current.planeHeight);
-          return;
-        }
-
-        if (now - lastSync >= SYNC_INTERVAL) {
-          onUpdateState(JSON.stringify(localStateRef.current));
-          lastSync = now;
-        }
+      if (localStateRef.current.phase === 'finished') {
+        onEndGame(JSON.stringify(localStateRef.current));
+        setLocalAngle(localStateRef.current.planeAngle);
+        setLocalHeight(localStateRef.current.planeHeight);
+        return;
       }
 
-      // Update local rendering state
+      if (now - lastSync >= SYNC_INTERVAL) {
+        onUpdateState(JSON.stringify(localStateRef.current));
+        lastSync = now;
+      }
+
       setLocalAngle(localStateRef.current.planeAngle);
       setLocalHeight(localStateRef.current.planeHeight);
 
@@ -198,34 +204,49 @@ export function LoopingLouie({
 
     let rafId = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafId);
-  }, [serverState?.phase, isHost, playerZones, onUpdateState, onEndGame]);
+  }, [isHost, serverState?.phase, playerZones, onUpdateState, onEndGame]);
 
-  // === RECONCILIATION: Merge server state with local prediction ===
+  // === NON-HOST: Extrapolate plane position from server state ===
   useEffect(() => {
-    if (!serverState || serverState.phase !== 'playing' || !localStateRef.current) return;
+    if (isHost || !serverState || serverState.phase !== 'playing') return;
 
-    const local = localStateRef.current;
+    const frame = () => {
+      const snap = serverSnapshotRef.current;
+      if (!snap) {
+        rafId = requestAnimationFrame(frame);
+        return;
+      }
 
-    // Snap authoritative fields from server
-    local.chickens = { ...serverState.chickens };
-    local.paddlePresses = { ...serverState.paddlePresses };
-    local.drinks = { ...serverState.drinks };
-    local.eliminated = [...serverState.eliminated];
-    local.visitedZones = [...serverState.visitedZones];
-    local.winner = serverState.winner;
-    local.phase = serverState.phase;
-    local.lastEvent = serverState.lastEvent;
-    local.config = serverState.config;
+      const elapsed = Math.min((performance.now() - snap.timestamp) / 1000, 0.2);
 
-    // For non-host: snap physics to server (host is authoritative for plane movement)
-    if (!isHost) {
-      local.planeAngle = serverState.planeAngle;
-      local.planeHeight = serverState.planeHeight;
-      local.planeHeightVelocity = serverState.planeHeightVelocity;
-      local.planeSpeed = serverState.planeSpeed;
-      local.nextSpeedChange = serverState.nextSpeedChange;
-      local.nextChaosEvent = serverState.nextChaosEvent;
-    }
+      // Extrapolate angle
+      const extrapolatedAngle = (snap.angle + snap.speed * elapsed + 360) % 360;
+
+      // Extrapolate height with gravity
+      let extrapolatedHeight = snap.height + snap.heightVelocity * elapsed - 0.5 * GRAVITY * elapsed * elapsed;
+      extrapolatedHeight = Math.max(0, Math.min(MAX_HEIGHT, extrapolatedHeight));
+
+      setLocalAngle(extrapolatedAngle);
+      setLocalHeight(extrapolatedHeight);
+
+      rafId = requestAnimationFrame(frame);
+    };
+
+    let rafId = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(rafId);
+  }, [isHost, serverState?.phase]);
+
+  // === NON-HOST: Update snapshot when server state arrives ===
+  useEffect(() => {
+    if (isHost || !serverState || serverState.phase !== 'playing') return;
+
+    serverSnapshotRef.current = {
+      angle: serverState.planeAngle,
+      speed: serverState.planeSpeed,
+      height: serverState.planeHeight,
+      heightVelocity: serverState.planeHeightVelocity,
+      timestamp: performance.now(),
+    };
   }, [stateJson, isHost]);
 
   // === HANDLERS ===
@@ -251,8 +272,8 @@ export function LoopingLouie({
     if (current.phase !== 'playing') return;
     if (current.eliminated?.includes(playerNumber)) return;
 
-    // 1. Apply deflection locally FIRST for instant feedback
-    if (localStateRef.current) {
+    // Apply deflection locally for instant feedback (host only — non-host relies on server)
+    if (isHost && localStateRef.current) {
       const local = localStateRef.current;
       const inZone = isPlaneInZone(local.planeAngle, myZoneAngle);
       if (inZone) {
@@ -261,7 +282,7 @@ export function LoopingLouie({
       }
     }
 
-    // 2. Also send to host via SpacetimeDB for authoritative processing
+    // Send to host via SpacetimeDB for authoritative processing
     onUpdateState(
       JSON.stringify({
         ...current,
@@ -272,7 +293,7 @@ export function LoopingLouie({
     setPaddleFlash(true);
     setTimeout(() => setPaddleFlash(false), 200);
     if (navigator.vibrate) navigator.vibrate(50);
-  }, [playerNumber, isSpectator, myZoneAngle, onUpdateState]);
+  }, [playerNumber, isSpectator, isHost, myZoneAngle, onUpdateState]);
 
   // === RENDERING ===
 
@@ -393,7 +414,7 @@ export function LoopingLouie({
   const planeApproaching = isPlaneInZone(localAngle, myZoneAngle);
   const planeNearby = (() => {
     const diff = ((localAngle - myZoneAngle + 540) % 360) - 180;
-    return Math.abs(diff) <= 40;
+    return Math.abs(diff) <= APPROACH_DEGREES;
   })();
   const showResult = state.phase === 'finished';
 

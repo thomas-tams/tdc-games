@@ -170,8 +170,17 @@ export function BeerRun({
 
     const local = localStateRef.current;
 
-    // Snap authoritative fields from server
-    local.obstacles = serverState.obstacles;
+    // Merge obstacles by ID: keep local x for existing (deterministic), add new from server
+    const localObsById = new Map(local.obstacles.map(o => [o.id, o]));
+    local.obstacles = serverState.obstacles.map(serverObs => {
+      const localObs = localObsById.get(serverObs.id);
+      if (localObs) {
+        // Existing obstacle — keep local x position (smooth deterministic movement)
+        return { ...serverObs, x: localObs.x };
+      }
+      // New obstacle spawned by host — use server position
+      return { ...serverObs };
+    });
     local.eliminated = [...serverState.eliminated];
     local.winner = serverState.winner;
     local.phase = serverState.phase;
