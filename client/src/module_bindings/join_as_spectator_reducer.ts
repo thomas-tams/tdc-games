@@ -10,12 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.row({
-  identity: __t.identity().primaryKey(),
-  roomId: __t.u32().name("room_id"),
-  displayName: __t.string().name("display_name"),
-  isHost: __t.bool().name("is_host"),
-  playerNumber: __t.u32().name("player_number"),
-  score: __t.u32(),
-  isSpectator: __t.bool().name("is_spectator"),
-});
+export default {
+  roomId: __t.u32(),
+  displayName: __t.string(),
+};

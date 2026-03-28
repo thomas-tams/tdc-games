@@ -31,6 +31,7 @@ const players = table(
     is_host: t.bool(),
     player_number: t.u32(),
     score: t.u32(),
+    is_spectator: t.bool(),
   }
 );
 
@@ -83,6 +84,7 @@ export const create_room = spacetimedb.reducer(
       is_host: true,
       player_number: 1,
       score: 0,
+      is_spectator: false,
     });
   }
 );
@@ -103,10 +105,10 @@ export const join_room = spacetimedb.reducer(
       ctx.db.players.identity.delete(ctx.sender);
     }
 
-    // Count current players in room
+    // Count current players in room (exclude spectators)
     let playerCount = 0;
-    for (const _ of ctx.db.players.byRoomId.filter(room_id)) {
-      playerCount++;
+    for (const p of ctx.db.players.byRoomId.filter(room_id)) {
+      if (!p.is_spectator) playerCount++;
     }
 
     if (playerCount >= room.max_players) {
@@ -120,6 +122,7 @@ export const join_room = spacetimedb.reducer(
       is_host: false,
       player_number: playerCount + 1,
       score: 0,
+      is_spectator: false,
     });
   }
 );
@@ -136,7 +139,7 @@ export const leave_room = spacetimedb.reducer((ctx) => {
   let firstRemaining: typeof player | null = null;
   for (const p of ctx.db.players.byRoomId.filter(roomId)) {
     remainingPlayers++;
-    if (!firstRemaining) firstRemaining = p;
+    if (!firstRemaining && !p.is_spectator) firstRemaining = p;
   }
 
   if (remainingPlayers === 0) {
@@ -178,6 +181,7 @@ export const update_game_state = spacetimedb.reducer(
   (ctx, { new_state_json }) => {
     const player = ctx.db.players.identity.find(ctx.sender);
     if (!player) throw new Error('Not in a room');
+    if (player.is_spectator) throw new Error('Spectators cannot update state');
 
     const state = ctx.db.game_states.room_id.find(player.room_id);
     if (!state) throw new Error('Game not started');
@@ -192,6 +196,7 @@ export const end_turn = spacetimedb.reducer(
   (ctx, { new_state_json }) => {
     const player = ctx.db.players.identity.find(ctx.sender);
     if (!player) throw new Error('Not in a room');
+    if (player.is_spectator) throw new Error('Spectators cannot end turns');
 
     const state = ctx.db.game_states.room_id.find(player.room_id);
     if (!state) throw new Error('Game not started');
@@ -200,10 +205,10 @@ export const end_turn = spacetimedb.reducer(
       throw new Error('Not your turn');
     }
 
-    // Count players to wrap around
+    // Count players to wrap around (exclude spectators)
     let maxPlayerNumber = 0;
     for (const p of ctx.db.players.byRoomId.filter(player.room_id)) {
-      if (p.player_number > maxPlayerNumber) {
+      if (!p.is_spectator && p.player_number > maxPlayerNumber) {
         maxPlayerNumber = p.player_number;
       }
     }
@@ -236,6 +241,7 @@ export const end_game = spacetimedb.reducer(
   (ctx, { final_state_json }) => {
     const player = ctx.db.players.identity.find(ctx.sender);
     if (!player) throw new Error('Not in a room');
+    if (player.is_spectator) throw new Error('Spectators cannot end games');
 
     const room = ctx.db.rooms.id.find(player.room_id);
     if (!room) throw new Error('Room not found');
@@ -248,5 +254,33 @@ export const end_game = spacetimedb.reducer(
       state.state_json = final_state_json;
       ctx.db.game_states.room_id.update(state);
     }
+  }
+);
+
+export const join_as_spectator = spacetimedb.reducer(
+  {
+    room_id: t.u32(),
+    display_name: t.string(),
+  },
+  (ctx, { room_id, display_name }) => {
+    const room = ctx.db.rooms.id.find(room_id);
+    if (!room) throw new Error('Room not found');
+    if (room.status === 'finished') throw new Error('Game is already finished');
+
+    // Remove from any existing room
+    const existing = ctx.db.players.identity.find(ctx.sender);
+    if (existing) {
+      ctx.db.players.identity.delete(ctx.sender);
+    }
+
+    ctx.db.players.insert({
+      identity: ctx.sender,
+      room_id,
+      display_name,
+      is_host: false,
+      player_number: 0,
+      score: 0,
+      is_spectator: true,
+    });
   }
 );

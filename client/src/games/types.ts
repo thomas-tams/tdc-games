@@ -13,6 +13,7 @@ export interface GameProps {
   currentTurn: number;
   players: PlayerInfo[];
   stateJson?: string; // Synced game state from SpacetimeDB
+  isSpectator: boolean;
   onUpdateState: (stateJson: string) => void;
   onEndTurn: (stateJson: string) => void;
   onEndGame: (stateJson: string) => void;
@@ -25,4 +26,5 @@ export interface GameConfig {
   minPlayers: number;
   maxPlayers: number;
   component: React.ComponentType<GameProps>;
+  spectatorComponent?: React.ComponentType<GameProps>;
 }

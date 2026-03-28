@@ -37,6 +37,7 @@ import {
 import CreateRoomReducer from "./create_room_reducer";
 import EndGameReducer from "./end_game_reducer";
 import EndTurnReducer from "./end_turn_reducer";
+import JoinAsSpectatorReducer from "./join_as_spectator_reducer";
 import JoinRoomReducer from "./join_room_reducer";
 import LeaveRoomReducer from "./leave_room_reducer";
 import StartGameReducer from "./start_game_reducer";
@@ -97,6 +98,7 @@ const reducersSchema = __reducers(
   __reducerSchema("create_room", CreateRoomReducer),
   __reducerSchema("end_game", EndGameReducer),
   __reducerSchema("end_turn", EndTurnReducer),
+  __reducerSchema("join_as_spectator", JoinAsSpectatorReducer),
   __reducerSchema("join_room", JoinRoomReducer),
   __reducerSchema("leave_room", LeaveRoomReducer),
   __reducerSchema("start_game", StartGameReducer),

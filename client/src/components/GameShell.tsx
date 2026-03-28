@@ -37,15 +37,22 @@ export function GameShell() {
     (p) => myIdentity && p.identity.isEqual(myIdentity)
   );
 
+  const isSpectator = myPlayer?.isSpectator ?? false;
+
+  // Only include actual players (not spectators) in the players list
   const players: PlayerInfo[] = useMemo(
     () =>
-      roomPlayers.map((p) => ({
-        name: p.displayName,
-        playerNumber: p.playerNumber,
-        score: p.score,
-      })),
+      roomPlayers
+        .filter((p) => !p.isSpectator)
+        .map((p) => ({
+          name: p.displayName,
+          playerNumber: p.playerNumber,
+          score: p.score,
+        })),
     [roomPlayers]
   );
+
+  const noOp = useCallback(() => {}, []);
 
   const onUpdateState = useCallback(
     (stateJson: string) => {
@@ -89,7 +96,12 @@ export function GameShell() {
     );
   }
 
-  const GameComponent = gameConfig.component;
+  // Choose spectator component if available, otherwise fall back to regular
+  const GameComponent =
+    isSpectator && gameConfig.spectatorComponent
+      ? gameConfig.spectatorComponent
+      : gameConfig.component;
+
   const currentTurn = gameState?.currentTurn ?? 1;
 
   const gameProps: GameProps = {
@@ -99,9 +111,10 @@ export function GameShell() {
     currentTurn,
     players,
     stateJson: gameState?.stateJson,
-    onUpdateState,
-    onEndTurn,
-    onEndGame,
+    isSpectator,
+    onUpdateState: isSpectator ? noOp : onUpdateState,
+    onEndTurn: isSpectator ? noOp : onEndTurn,
+    onEndGame: isSpectator ? noOp : onEndGame,
   };
 
   return (
@@ -130,6 +143,22 @@ export function GameShell() {
           >
             Room {roomId}
           </span>
+          {isSpectator && (
+            <span
+              style={{
+                background: 'var(--accent)',
+                color: 'var(--bg)',
+                padding: '0.15rem 0.5rem',
+                borderRadius: 'var(--radius)',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
+              Spectating
+            </span>
+          )}
         </div>
 
         {/* Players */}
@@ -162,7 +191,7 @@ export function GameShell() {
         </div>
 
         <button className="btn-danger" onClick={handleLeave}>
-          Leave
+          {isSpectator ? 'Stop Watching' : 'Leave'}
         </button>
       </div>
 

@@ -25,6 +25,7 @@ export const Players = __t.object("Players", {
   isHost: __t.bool(),
   playerNumber: __t.u32(),
   score: __t.u32(),
+  isSpectator: __t.bool(),
 });
 export type Players = __Infer<typeof Players>;
 

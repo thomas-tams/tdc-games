@@ -1,0 +1,449 @@
+/* ============================================================================
+   Looping Louie — Game Styles
+   ============================================================================ */
+
+.ll-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 0.5rem;
+  min-height: 70vh;
+  position: relative;
+}
+
+.ll-waiting {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.1rem;
+}
+
+/* === COUNTDOWN === */
+
+.ll-countdown-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  min-height: 60vh;
+  text-align: center;
+}
+
+.ll-countdown-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.ll-countdown-number {
+  font-size: 6rem;
+  font-weight: 900;
+  color: var(--primary);
+  animation: ll-count-pop 0.5s ease;
+}
+
+@keyframes ll-count-pop {
+  0% { transform: scale(1.5); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.ll-countdown-hint {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+/* === EVENT TOAST === */
+
+.ll-toast {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 0.95rem;
+  z-index: 10;
+  animation: ll-toast-in 0.3s ease;
+  white-space: nowrap;
+}
+
+.ll-toast-hit {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.ll-toast-deflect {
+  background: var(--success);
+  color: var(--bg);
+}
+
+.ll-toast-eliminate {
+  background: #000;
+  color: #fff;
+}
+
+@keyframes ll-toast-in {
+  from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* === CIRCULAR TRACK === */
+
+.ll-track-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.ll-track {
+  position: relative;
+  width: min(280px, 75vw);
+  height: min(280px, 75vw);
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  background: var(--bg-card);
+}
+
+.ll-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transform: translate(-50%, -50%);
+}
+
+/* === ZONE INDICATORS === */
+
+.ll-zone {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: 0 0;
+  transform: rotate(var(--zone-angle)) translateY(calc(-1 * min(140px, 37.5vw) - 15px));
+  margin-left: -20px;
+  margin-top: -10px;
+}
+
+.ll-zone-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  transform: rotate(calc(-1 * var(--zone-angle)));
+  min-width: 60px;
+}
+
+.ll-zone-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--zone-color);
+  white-space: nowrap;
+}
+
+.ll-zone-chickens {
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.ll-zone.eliminated .ll-zone-label {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+
+.ll-zone.mine .ll-zone-name {
+  text-decoration: underline;
+}
+
+/* === PLANE === */
+
+.ll-plane {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: 0 0;
+  transform: rotate(var(--plane-angle)) translateY(calc(-1 * min(120px, 32vw)));
+  margin-left: -10px;
+  margin-top: -10px;
+  font-size: 1.3rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  transition: none;
+  z-index: 5;
+  /* Height visualization: opacity and scale */
+  opacity: calc(0.4 + var(--plane-height) * 0.6);
+}
+
+.ll-plane::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(6px + var(--plane-height) * 8px);
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(0,0,0, calc(0.4 - var(--plane-height) * 0.3));
+}
+
+/* === MY CHICKENS === */
+
+.ll-my-chickens {
+  text-align: center;
+}
+
+.ll-chicken-row {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.ll-chicken {
+  font-size: 2rem;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.ll-chicken.lost {
+  opacity: 0.15;
+  transform: scale(0.7);
+}
+
+.ll-eliminated-text {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-top: 0.5rem;
+}
+
+/* === DRINKS === */
+
+.ll-drinks {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* === PADDLE BUTTON === */
+
+.ll-paddle-btn {
+  width: 100%;
+  padding: 2.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 3px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  margin-top: auto;
+}
+
+.ll-paddle-btn:active {
+  transform: scale(0.97);
+}
+
+.ll-paddle-btn.approaching {
+  background: var(--warning);
+  color: var(--bg);
+  border-color: var(--warning);
+  animation: ll-pulse 0.6s ease infinite;
+}
+
+.ll-paddle-btn.in-zone {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  animation: ll-pulse 0.3s ease infinite;
+}
+
+.ll-paddle-btn.flash {
+  background: var(--success);
+  color: var(--bg);
+  border-color: var(--success);
+}
+
+@keyframes ll-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* === RESULT OVERLAY === */
+
+.ll-result-overlay {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  text-align: center;
+  width: 100%;
+}
+
+.ll-result-title {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.ll-result-winner {
+  font-size: 1.3rem;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+}
+
+.ll-result-drinks h3 {
+  margin-bottom: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ll-result-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ll-result-row:last-child {
+  border-bottom: none;
+}
+
+/* ============================================================================
+   SPECTATOR / TV VIEW
+   ============================================================================ */
+
+.ll-spectator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem;
+  min-height: 80vh;
+  position: relative;
+}
+
+.ll-spectator-countdown {
+  min-height: 80vh;
+}
+
+.ll-spectator-players {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Toasts for spectator */
+.ll-spectator-toasts {
+  position: fixed;
+  top: 80px;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 100;
+}
+
+.ll-spectator-toast {
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 1.1rem;
+  animation: ll-toast-in 0.3s ease;
+  white-space: nowrap;
+}
+
+/* Large spectator track */
+.ll-spectator-track-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+}
+
+.ll-spectator-track {
+  width: min(500px, 70vh, 80vw);
+  height: min(500px, 70vh, 80vw);
+}
+
+.ll-spectator-track .ll-zone {
+  transform: rotate(var(--zone-angle)) translateY(calc(-1 * min(250px, 35vh, 40vw) - 30px));
+}
+
+.ll-spectator-track .ll-plane {
+  transform: rotate(var(--plane-angle)) translateY(calc(-1 * min(220px, 30vh, 35vw)));
+  font-size: 2rem;
+}
+
+.ll-spectator-zone-label {
+  min-width: 80px;
+}
+
+.ll-spectator-zone-label .ll-zone-name {
+  font-size: 1rem;
+}
+
+.ll-spectator-zone-label .ll-zone-chickens {
+  font-size: 0.9rem;
+}
+
+.ll-zone-drinks {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.ll-mini-chicken {
+  transition: opacity 0.3s;
+}
+
+.ll-mini-chicken.lost {
+  opacity: 0.15;
+}
+
+/* Spectator result */
+.ll-spectator-result {
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 3rem;
+}
+
+.ll-spectator-result h2 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ll-spectator-winner {
+  font-size: 1.8rem;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+}
+
+.ll-spectator-drink-tally {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ll-spectator-tally-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  font-size: 1.2rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ll-spectator-tally-row:last-child {
+  border-bottom: none;
+}

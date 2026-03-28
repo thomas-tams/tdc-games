@@ -4,6 +4,8 @@ import { OddOneOut } from './odd-one-out/OddOneOut';
 import { TheChance } from './the-chance/TheChance';
 import { HotPotato } from './hot-potato/HotPotato';
 import { SoundLimbo } from './sound-limbo/SoundLimbo';
+import { LoopingLouie } from './looping-louie/LoopingLouie';
+import { LoopingLouieSpectator } from './looping-louie/LoopingLouieSpectator';
 
 export const games: GameConfig[] = [
   {
@@ -50,5 +52,15 @@ export const games: GameConfig[] = [
     minPlayers: 2,
     maxPlayers: 8,
     component: SoundLimbo,
+  },
+  {
+    id: 'looping-louie',
+    name: 'Looping Louie',
+    description:
+      'Deflect the plane to protect your chickens! Last one standing wins. Lose a chicken = drink.',
+    minPlayers: 2,
+    maxPlayers: 4,
+    component: LoopingLouie,
+    spectatorComponent: LoopingLouieSpectator,
   },
 ];
