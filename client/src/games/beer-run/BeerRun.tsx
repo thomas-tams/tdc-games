@@ -38,6 +38,8 @@ export function BeerRun({
   const [deathMessage, setDeathMessage] = useState<string | null>(null);
   // Local predicted state for smooth rendering
   const [localState, setLocalState] = useState<BeerRunState | null>(null);
+  // Direct DOM ref for avatar (bypasses React re-renders)
+  const avatarRef = useRef<HTMLDivElement>(null);
   const localStateRef = useRef<BeerRunState | null>(null);
 
   const isHost = playerNumber === Math.min(...players.map((p) => p.playerNumber));
@@ -126,6 +128,7 @@ export function BeerRun({
 
     let lastTime = performance.now();
     let lastSync = 0;
+    let lastRender = 0;
 
     const frame = (now: number) => {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
@@ -155,8 +158,19 @@ export function BeerRun({
         }
       }
 
-      // Update React state for rendering (~60fps)
-      setLocalState({ ...localStateRef.current });
+      // Direct DOM: update avatar position every frame (smooth, no React re-render)
+      if (avatarRef.current) {
+        const ps = localStateRef.current.playerStates[playerNumber];
+        avatarRef.current.style.transform = `translateY(${-(ps?.y ?? 0) * 0.35}px)`;
+      }
+
+      // Throttled React: update obstacle list + UI every 100ms
+      // CSS transitions on obstacles handle smooth interpolation between renders
+      if (now - lastRender >= 100) {
+        setLocalState({ ...localStateRef.current });
+        lastRender = now;
+      }
+
       rafId = requestAnimationFrame(frame);
     };
 
@@ -408,6 +422,7 @@ export function BeerRun({
             <div className="br-preview-ground" />
             {/* My avatar */}
             <div
+              ref={avatarRef}
               className={`br-preview-avatar ${!amAlive ? 'dead' : ''}`}
               style={{
                 left: `${previewPlayerX}%`,

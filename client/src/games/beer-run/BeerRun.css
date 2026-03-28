@@ -208,7 +208,7 @@
   position: absolute;
   bottom: 3px;
   font-size: 2rem;
-  transition: transform 0.05s linear;
+  transition: transform 0.1s linear;
   z-index: 2;
 }
 
@@ -221,7 +221,7 @@
   position: absolute;
   bottom: 3px;
   font-size: 1.5rem;
-  transition: left 0.05s linear;
+  transition: left 0.1s linear;
   z-index: 1;
 }
 
@@ -442,7 +442,7 @@
   position: absolute;
   bottom: 2px;
   font-size: 1.6rem;
-  transition: transform 0.05s linear;
+  transition: transform 0.1s linear;
   z-index: 2;
 }
 
@@ -454,7 +454,7 @@
 .br-lane-obstacle {
   position: absolute;
   bottom: 2px;
-  transition: left 0.05s linear;
+  transition: left 0.1s linear;
   z-index: 1;
 }
 

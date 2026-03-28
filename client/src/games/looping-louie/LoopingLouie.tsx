@@ -81,6 +81,9 @@ export function LoopingLouie({
   const [paddleFlash, setPaddleFlash] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
 
+  // Direct DOM ref for plane — bypasses React re-renders for smooth animation
+  const planeRef = useRef<HTMLDivElement>(null);
+
   // Host uses localStateRef for its authoritative simulation
   const localStateRef = useRef<LoopingLouieState | null>(null);
 
@@ -170,6 +173,7 @@ export function LoopingLouie({
 
     let lastTime = performance.now();
     let lastSync = 0;
+    let lastReactUpdate = 0;
 
     const frame = (now: number) => {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
@@ -196,8 +200,19 @@ export function LoopingLouie({
         lastSync = now;
       }
 
-      setLocalAngle(localStateRef.current.planeAngle);
-      setLocalHeight(localStateRef.current.planeHeight);
+      // Direct DOM update every frame (smooth, no React re-render)
+      if (planeRef.current) {
+        planeRef.current.style.setProperty('--plane-angle', `${localStateRef.current.planeAngle}deg`);
+        planeRef.current.style.setProperty('--plane-height', String(localStateRef.current.planeHeight));
+        planeRef.current.className = `ll-plane${localStateRef.current.planeHeight < 0.35 ? ' low' : ''}`;
+      }
+
+      // Throttled React update for gradient + paddle button (every 200ms)
+      if (now - lastReactUpdate >= 200) {
+        setLocalAngle(localStateRef.current.planeAngle);
+        setLocalHeight(localStateRef.current.planeHeight);
+        lastReactUpdate = now;
+      }
 
       rafId = requestAnimationFrame(frame);
     };
@@ -210,7 +225,9 @@ export function LoopingLouie({
   useEffect(() => {
     if (isHost || !serverState || serverState.phase !== 'playing') return;
 
-    const frame = () => {
+    let lastReactUpdate = 0;
+
+    const frame = (now: number) => {
       const snap = serverSnapshotRef.current;
       if (!snap) {
         rafId = requestAnimationFrame(frame);
@@ -218,16 +235,23 @@ export function LoopingLouie({
       }
 
       const elapsed = Math.min((performance.now() - snap.timestamp) / 1000, 0.2);
-
-      // Extrapolate angle
       const extrapolatedAngle = (snap.angle + snap.speed * elapsed + 360) % 360;
-
-      // Extrapolate height with gravity
       let extrapolatedHeight = snap.height + snap.heightVelocity * elapsed - 0.5 * GRAVITY * elapsed * elapsed;
       extrapolatedHeight = Math.max(0, Math.min(MAX_HEIGHT, extrapolatedHeight));
 
-      setLocalAngle(extrapolatedAngle);
-      setLocalHeight(extrapolatedHeight);
+      // Direct DOM update every frame (smooth)
+      if (planeRef.current) {
+        planeRef.current.style.setProperty('--plane-angle', `${extrapolatedAngle}deg`);
+        planeRef.current.style.setProperty('--plane-height', String(extrapolatedHeight));
+        planeRef.current.className = `ll-plane${extrapolatedHeight < 0.35 ? ' low' : ''}`;
+      }
+
+      // Throttled React update for gradient + paddle button (every 200ms)
+      if (now - lastReactUpdate >= 200) {
+        setLocalAngle(extrapolatedAngle);
+        setLocalHeight(extrapolatedHeight);
+        lastReactUpdate = now;
+      }
 
       rafId = requestAnimationFrame(frame);
     };
@@ -477,6 +501,7 @@ export function LoopingLouie({
           })}
 
           <div
+            ref={planeRef}
             className={`ll-plane ${localHeight < 0.35 ? 'low' : ''}`}
             style={{
               '--plane-angle': `${localAngle}deg`,

@@ -75,6 +75,7 @@ export function BeerRunSpectator({
     }
 
     let lastTime = performance.now();
+    let lastRender = 0;
 
     const frame = (now: number) => {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
@@ -90,7 +91,12 @@ export function BeerRunSpectator({
         localStateRef.current, dt, Date.now(), playerNameMap, false
       );
 
-      setLocalState({ ...localStateRef.current });
+      // Throttled React render every 100ms — CSS transitions handle smooth interpolation
+      if (now - lastRender >= 100) {
+        setLocalState({ ...localStateRef.current });
+        lastRender = now;
+      }
+
       rafId = requestAnimationFrame(frame);
     };
 

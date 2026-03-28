@@ -49,6 +49,7 @@ export function LoopingLouieSpectator({ players, stateJson }: GameProps) {
 
   const [localAngle, setLocalAngle] = useState(0);
   const [localHeight, setLocalHeight] = useState(0.8);
+  const planeRef = useRef<HTMLDivElement>(null);
   const [toasts, setToasts] = useState<Array<{ id: number; text: string; type: string }>>([]);
   const toastIdRef = useRef(0);
   const lastEventRef = useRef<string | null>(null);
@@ -80,7 +81,9 @@ export function LoopingLouieSpectator({ players, stateJson }: GameProps) {
   useEffect(() => {
     if (!state || (state.phase !== 'playing' && state.phase !== 'finished')) return;
 
-    const frame = () => {
+    let lastReactUpdate = 0;
+
+    const frame = (now: number) => {
       const snap = serverSnapshotRef.current;
       if (!snap) {
         rafId = requestAnimationFrame(frame);
@@ -92,8 +95,19 @@ export function LoopingLouieSpectator({ players, stateJson }: GameProps) {
       let extrapolatedHeight = snap.height + snap.heightVelocity * elapsed - 0.5 * GRAVITY * elapsed * elapsed;
       extrapolatedHeight = Math.max(0, Math.min(MAX_HEIGHT, extrapolatedHeight));
 
-      setLocalAngle(extrapolatedAngle);
-      setLocalHeight(extrapolatedHeight);
+      // Direct DOM update every frame (smooth)
+      if (planeRef.current) {
+        planeRef.current.style.setProperty('--plane-angle', `${extrapolatedAngle}deg`);
+        planeRef.current.style.setProperty('--plane-height', String(extrapolatedHeight));
+        planeRef.current.className = `ll-plane ll-spectator-plane${extrapolatedHeight < 0.35 ? ' low' : ''}`;
+      }
+
+      // Throttled React update (every 200ms)
+      if (now - lastReactUpdate >= 200) {
+        setLocalAngle(extrapolatedAngle);
+        setLocalHeight(extrapolatedHeight);
+        lastReactUpdate = now;
+      }
 
       rafId = requestAnimationFrame(frame);
     };
@@ -247,6 +261,7 @@ export function LoopingLouieSpectator({ players, stateJson }: GameProps) {
 
           {/* Plane */}
           <div
+            ref={planeRef}
             className={`ll-plane ll-spectator-plane ${localHeight < 0.35 ? 'low' : ''}`}
             style={{
               '--plane-angle': `${localAngle}deg`,

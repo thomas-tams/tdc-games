@@ -43,12 +43,12 @@ export interface LoopingLouieState {
 // ============================================================================
 
 export const SPEED_MAP: Record<LoopingLouieConfig['speed'], number> = {
-  slow: 150,
-  normal: 240,
-  fast: 340,
+  slow: 75,
+  normal: 120,
+  fast: 170,
 };
 
-export const SPEED_VARIATION = 60;       // +/- random variation
+export const SPEED_VARIATION = 30;       // +/- random variation
 export const SPEED_CHANGE_INTERVAL = 2500; // ms between speed changes
 export const GRAVITY = 2.5;              // height decay per second
 export const DEFLECT_IMPULSE = 3.0;      // upward impulse from successful paddle
